@@ -24,6 +24,7 @@ class DataHandler:
         klines = self.client.get_klines(
             symbol=symbol, interval=self.interval, limit=limit
         )
+
         df = pd.DataFrame(
             klines,
             columns=[
@@ -42,5 +43,14 @@ class DataHandler:
             ],
         )
         df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
+
+        # Ordenar por timestamp para garantir que os dados estejam em ordem cronológica
+        df = df.sort_values(by="timestamp").reset_index(drop=True)
+
+        df["open"] = df["open"].astype(float)
+        df["high"] = df["high"].astype(float)
+        df["low"] = df["low"].astype(float)
         df["close"] = df["close"].astype(float)
+        df["volume"] = df["volume"].astype(float)
+
         return df.sort_values("timestamp").reset_index(drop=True)

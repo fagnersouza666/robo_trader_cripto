@@ -10,6 +10,7 @@ import datetime
 import os
 import math
 from decimal import Decimal
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -121,19 +122,15 @@ class TradingBot:
                 # Analisar sentimento
                 sentimento = self.sentiment_analyzer.analisar_sentimento(value)
 
+                log = f"Moeda: {key}"
+                logging.info(log)
+                self.notificador_telegram.enviar_mensagem(log)
+
                 # Determinar ação de trading (comprar, vender, ou esperar)
                 acao = self.estrategia_trading(df, sentimento)
 
                 # Executar ação e registrar a operação no banco de dados
                 stake = self.calcular_stake(key)
-
-                logging.info(
-                    f"moeda: {value} | ação sugerida: {acao} | RSI: {df['RSI'].iloc[-1]}  < 35 | Sentimento: {sentimento} | SMA50: {df['SMA50'].iloc[-1]} > SMA200: {df['SMA200'].iloc[-1]}"
-                )
-
-                self.notificador_telegram.enviar_mensagem(
-                    f"moeda: {value} | ação sugerida: {acao} | RSI: {df['RSI'].iloc[-1]} <35 | Sentimento: {sentimento} | SMA50: {df['SMA50'].iloc[-1]} > SMA200: {df['SMA200'].iloc[-1]}"
-                )
 
                 if acao == "Comprar":
                     preco_compra = self.trade_executor.executar_ordem(
@@ -153,17 +150,31 @@ class TradingBot:
                         key, "VENDA", float(stake), preco_venda, valor_total
                     )
             except Exception as e:
+                traceback.print_exc()
                 logger.error(f"Erro inesperado no símbolo {key}: {e}")
 
     def estrategia_trading(self, df, sentimento):
         rsi = df["RSI"].iloc[-1]
         sma50 = df["SMA50"].iloc[-1]
         sma200 = df["SMA200"].iloc[-1]
+        vwap = df["VWAP"].iloc[-1]
+        ultimo_preco = df["close"].iloc[-1]
+
+        log = f"RSI: {rsi} | SMA50: {sma50} | SMA200: {sma200} | VWAP: {vwap} | Último preço: {ultimo_preco} | sentimento: {sentimento}"
+        logging.info(log)
+        self.notificador_telegram.enviar_mensagem(log)
 
         if rsi < 35 and sma50 > sma200 and sentimento == "positivo":
             return "Comprar"
         elif rsi > 70 and sma50 < sma200 and sentimento == "negativo":
             return "Vender"
+
+        # Ajuste da lógica para incluir o VWAP na estratégia de day trade
+        elif rsi < 35 and ultimo_preco > vwap and sentimento == "positivo":
+            return "Comprar"
+        elif rsi > 70 and ultimo_preco < vwap and sentimento == "negativo":
+            return "Vender"
+
         return "Esperar"
 
     def registrar_e_notificar_operacao(
