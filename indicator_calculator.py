@@ -3,8 +3,9 @@ import pandas_ta as ta
 
 
 class IndicatorCalculator:
-    def __init__(self, rsi_length: int = 14):
+    def __init__(self, rsi_length: int = 14, momentum_length: int = 10):
         self.rsi_length = rsi_length
+        self.momentum_length = momentum_length
 
     def calcular_indicadores(
         self, df: pd.DataFrame, indicadores: dict = None
@@ -16,6 +17,7 @@ class IndicatorCalculator:
                 "SMA200": True,
                 "VWAP": True,
                 "BollingerBands": True,
+                "Momentum": True,
             }
 
         # Certifique-se de que o índice é um DatetimeIndex
@@ -37,5 +39,8 @@ class IndicatorCalculator:
             bbands = ta.bbands(df["close"], length=20, std=2)
             df["BB_upper"] = bbands["BBU_20_2.0"]
             df["BB_lower"] = bbands["BBL_20_2.0"]
+
+        if indicadores.get("Momentum"):
+            df["Momentum"] = ta.mom(df["close"], length=self.momentum_length)
 
         return df

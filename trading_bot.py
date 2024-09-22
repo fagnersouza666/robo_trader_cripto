@@ -157,6 +157,7 @@ class TradingBot:
         ultimo_preco = df["close"].iloc[-1]
         bb_upper = df["BB_upper"].iloc[-1]
         bb_lower = df["BB_lower"].iloc[-1]
+        momentum = df["Momentum"].iloc[-1]
 
         if rsi < 35 and sma50 > sma200 and sentimento == "positivo":
             return "Comprar"
@@ -177,6 +178,12 @@ class TradingBot:
         elif (
             ultimo_preco < vwap and ultimo_preco > bb_lower and sentimento == "negativo"
         ):
+            return "Vender"
+
+        # Critério principal: VWAP e Momentum
+        elif ultimo_preco > vwap and momentum > 0 and sentimento == "positivo":
+            return "Comprar"
+        elif ultimo_preco < vwap and momentum < 0 and sentimento == "negativo":
             return "Vender"
 
         return "Esperar"
