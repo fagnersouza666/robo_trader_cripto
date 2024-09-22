@@ -1,6 +1,7 @@
 import logging
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ class TradeExecutor:
         stop_loss_percent: float,
         take_profit_percent: float,
     ):
+
         if ordem_tipo == "buy":
             return self._executar_ordem_buy(
                 symbol, quantidade, stop_loss_percent, take_profit_percent
@@ -36,13 +38,18 @@ class TradeExecutor:
         take_profit_percent: float,
     ):
         try:
+
             ordem_compra = self.client.order_market_buy(
                 symbol=symbol, quantity=quantidade
             )
+
             logger.info(f"Ordem de compra executada para {symbol}: {ordem_compra}")
             self._configurar_ordem_limite(
                 ordem_compra, stop_loss_percent, take_profit_percent
             )
+
+            return float(ordem_compra["fills"][0]["price"])
+
         except BinanceAPIException as e:
             logger.error(f"Erro ao executar ordem de compra: {e}")
 
@@ -61,6 +68,9 @@ class TradeExecutor:
             self._configurar_ordem_limite(
                 ordem_venda, stop_loss_percent, take_profit_percent
             )
+
+            return float(ordem_venda["fills"][0]["price"])
+
         except BinanceAPIException as e:
             logger.error(f"Erro ao executar ordem de venda: {e}")
 

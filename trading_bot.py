@@ -8,6 +8,8 @@ from database_manager import DatabaseManager
 from telegram_notifier import TelegramNotifier
 import datetime
 import os
+import math
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
@@ -52,13 +54,17 @@ class TradingBot:
 
         # Obter o preço atual do ativo
         ticker = self.client.get_symbol_ticker(symbol=symbol)
+
         preco_ativo = float(ticker["price"])
 
         # Quantidade de criptomoeda a comprar/vender com base na stake
         stake_quantidade = stake_valor / preco_ativo
-        return self.ajustar_quantidade(symbol, stake_quantidade)
 
-    def ajustar_quantidade(self, symbol: str, quantidade: float) -> float:
+        return self.ajustar_quantidade(symbol, stake_quantidade, preco_ativo)
+
+    def ajustar_quantidade(
+        self, symbol: str, quantidade: float, preco_ativo: float
+    ) -> float:
         """
         Ajusta a quantidade para atender ao passo mínimo de quantidade da Binance.
 
@@ -67,16 +73,41 @@ class TradingBot:
         :return: Quantidade ajustada.
         """
         info = self.client.get_symbol_info(symbol)
-        step_size = float(
-            next(filter(lambda f: f["filterType"] == "LOT_SIZE", info["filters"]))[
-                "stepSize"
-            ]
+
+        filters = {f["filterType"]: f for f in info["filters"]}
+
+        # Filtro de tamanho de lote (quantidade mínima, máxima e incrementos)
+        lot_size = filters["LOT_SIZE"]
+        min_qty = float(lot_size["minQty"])
+        max_qty = float(lot_size["maxQty"])
+        step_size = float(lot_size["stepSize"])
+
+        # Filtro de valor notional mínimo (valor mínimo em USDT que você precisa gastar)
+        notional = filters["NOTIONAL"]
+        min_notional = float(notional["minNotional"])
+
+        # Calcule a quantidade mínima necessária para atender ao min_notional
+        min_quantity = max(min_qty, min_notional / preco_ativo)
+
+        # Ajuste a quantidade mínima ao step_size apropriado
+        step_size_decimal = "{0:.8f}".format(step_size).rstrip("0")
+        precision = (
+            len(step_size_decimal.split(".")[1]) if "." in step_size_decimal else 0
         )
+
+        min_quantity = round(min_quantity, precision)
+
         quantidade_ajustada = quantidade - (quantidade % step_size)
-        return float("{:.8f}".format(quantidade_ajustada))
+
+        if quantidade_ajustada < min_quantity:
+            quantidade_ajustada = Decimal(min_quantity)
+
+        retorno = Decimal("{:.8f}".format(quantidade_ajustada))
+
+        return retorno
 
     def executar_trading(self):
-        print(self.symbols)
+
         for key, value in self.symbols.items():
             try:
                 # Obter dados de mercado
@@ -108,17 +139,18 @@ class TradingBot:
                     preco_compra = self.trade_executor.executar_ordem(
                         key, stake, "buy", 1.0, 2.0
                     )
-                    valor_total = stake * preco_compra
+
+                    valor_total = float(stake) * preco_compra
                     self.registrar_e_notificar_operacao(
-                        key, "COMPRA", stake, preco_compra, valor_total
+                        key, "COMPRA", float(stake), preco_compra, valor_total
                     )
                 elif acao == "Vender":
                     preco_venda = self.trade_executor.executar_ordem(
                         key, stake, "sell", 1.0, 2.0
                     )
-                    valor_total = stake * preco_venda
+                    valor_total = float(stake) * preco_venda
                     self.registrar_e_notificar_operacao(
-                        key, "VENDA", stake, preco_venda, valor_total
+                        key, "VENDA", float(stake), preco_venda, valor_total
                     )
             except Exception as e:
                 logger.error(f"Erro inesperado no símbolo {key}: {e}")
@@ -137,6 +169,9 @@ class TradingBot:
     def registrar_e_notificar_operacao(
         self, symbol, tipo_operacao, quantidade, preco, valor_total
     ):
+
+        quantidade = f"{quantidade:.8f}"
+
         # Registrar a operação no banco de dados
         data_hora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.database_manager.registrar_transacao(
