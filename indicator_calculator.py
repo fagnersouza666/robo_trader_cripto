@@ -10,7 +10,13 @@ class IndicatorCalculator:
         self, df: pd.DataFrame, indicadores: dict = None
     ) -> pd.DataFrame:
         if indicadores is None:
-            indicadores = {"RSI": True, "SMA50": True, "SMA200": True, "VWAP": True}
+            indicadores = {
+                "RSI": True,
+                "SMA50": True,
+                "SMA200": True,
+                "VWAP": True,
+                "BollingerBands": True,
+            }
 
         # Certifique-se de que o índice é um DatetimeIndex
         if not isinstance(df.index, pd.DatetimeIndex):
@@ -25,5 +31,11 @@ class IndicatorCalculator:
         if indicadores.get("VWAP"):
             # Cálculo do VWAP utilizando o pandas_ta
             df["VWAP"] = ta.vwap(df["high"], df["low"], df["close"], df["volume"])
+
+        if indicadores.get("BollingerBands"):
+            # Cálculo das Bandas de Bollinger
+            bbands = ta.bbands(df["close"], length=20, std=2)
+            df["BB_upper"] = bbands["BBU_20_2.0"]
+            df["BB_lower"] = bbands["BBL_20_2.0"]
 
         return df

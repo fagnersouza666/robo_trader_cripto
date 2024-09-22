@@ -159,10 +159,8 @@ class TradingBot:
         sma200 = df["SMA200"].iloc[-1]
         vwap = df["VWAP"].iloc[-1]
         ultimo_preco = df["close"].iloc[-1]
-
-        log = f"RSI: {rsi} | SMA50: {sma50} | SMA200: {sma200} | VWAP: {vwap} | Último preço: {ultimo_preco} | sentimento: {sentimento}"
-        logging.info(log)
-        self.notificador_telegram.enviar_mensagem(log)
+        bb_upper = df["BB_upper"].iloc[-1]
+        bb_lower = df["BB_lower"].iloc[-1]
 
         if rsi < 35 and sma50 > sma200 and sentimento == "positivo":
             return "Comprar"
@@ -173,6 +171,16 @@ class TradingBot:
         elif rsi < 35 and ultimo_preco > vwap and sentimento == "positivo":
             return "Comprar"
         elif rsi > 70 and ultimo_preco < vwap and sentimento == "negativo":
+            return "Vender"
+
+        # Estratégia combinando VWAP e Bandas de Bollinger
+        elif (
+            ultimo_preco > vwap and ultimo_preco < bb_upper and sentimento == "positivo"
+        ):
+            return "Comprar"
+        elif (
+            ultimo_preco < vwap and ultimo_preco > bb_lower and sentimento == "negativo"
+        ):
             return "Vender"
 
         return "Esperar"
