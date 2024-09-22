@@ -122,10 +122,6 @@ class TradingBot:
                 # Analisar sentimento
                 sentimento = self.sentiment_analyzer.analisar_sentimento(value)
 
-                log = f"Moeda: {key}"
-                logging.info(log)
-                self.notificador_telegram.enviar_mensagem(log)
-
                 # Determinar ação de trading (comprar, vender, ou esperar)
                 acao = self.estrategia_trading(df, sentimento)
 
