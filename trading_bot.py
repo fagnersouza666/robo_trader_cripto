@@ -151,39 +151,63 @@ class TradingBot:
 
     def estrategia_trading(self, df, sentimento):
         rsi = df["RSI"].iloc[-1]
+        rsi_anterior = df["RSI"].iloc[-2]
         sma50 = df["SMA50"].iloc[-1]
         sma200 = df["SMA200"].iloc[-1]
         vwap = df["VWAP"].iloc[-1]
         ultimo_preco = df["close"].iloc[-1]
+        preco_anterior = df["close"].iloc[-2]
         bb_upper = df["BB_upper"].iloc[-1]
         bb_lower = df["BB_lower"].iloc[-1]
         momentum = df["Momentum"].iloc[-1]
 
-        if rsi < 35 and sma50 > sma200 and sentimento == "positivo":
+        # Identificando níveis de suporte e resistência
+        resistencia = bb_upper if ultimo_preco < bb_upper else vwap
+        suporte = bb_lower if ultimo_preco > bb_lower else vwap
+
+        if rsi < 35 and sma50 > sma200 and "positivo" in sentimento.lower():
             return "Comprar"
-        elif rsi > 70 and sma50 < sma200 and sentimento == "negativo":
+        elif rsi > 70 and sma50 < sma200 and "negativo" in sentimento.lower():
             return "Vender"
 
         # Ajuste da lógica para incluir o VWAP na estratégia de day trade
-        elif rsi < 35 and ultimo_preco > vwap and sentimento == "positivo":
+        elif rsi < 35 and ultimo_preco > vwap and "positivo" in sentimento.lower():
             return "Comprar"
-        elif rsi > 70 and ultimo_preco < vwap and sentimento == "negativo":
+        elif rsi > 70 and ultimo_preco < vwap and "negativo" in sentimento.lower():
             return "Vender"
 
         # Estratégia combinando VWAP e Bandas de Bollinger
         elif (
-            ultimo_preco > vwap and ultimo_preco < bb_upper and sentimento == "positivo"
+            ultimo_preco > vwap
+            and ultimo_preco < bb_upper
+            and "positivo" in sentimento.lower()
         ):
             return "Comprar"
         elif (
-            ultimo_preco < vwap and ultimo_preco > bb_lower and sentimento == "negativo"
+            ultimo_preco < vwap
+            and ultimo_preco > bb_lower
+            and "negativo" in sentimento.lower()
         ):
             return "Vender"
 
         # Critério principal: VWAP e Momentum
-        elif ultimo_preco > vwap and momentum > 0 and sentimento == "positivo":
+        elif ultimo_preco > vwap and momentum > 0 and "positivo" in sentimento.lower():
             return "Comprar"
-        elif ultimo_preco < vwap and momentum < 0 and sentimento == "negativo":
+        elif ultimo_preco < vwap and momentum < 0 and "negativo" in sentimento.lower():
+            return "Vender"
+
+        # Estratégia de breakout baseada no rompimento dos níveis de suporte e resistência
+        elif ultimo_preco > resistencia and "positivo" in sentimento.lower():
+            return "Comprar"
+        elif ultimo_preco < suporte and "negativo" in sentimento.lower():
+            return "Vender"
+
+        # Divergência de alta (preço menor, RSI maior)
+        elif ultimo_preco < preco_anterior and rsi > rsi_anterior:
+            return "Comprar"
+
+        # Divergência de baixa (preço maior, RSI menor)
+        elif ultimo_preco > preco_anterior and rsi < rsi_anterior:
             return "Vender"
 
         return "Esperar"

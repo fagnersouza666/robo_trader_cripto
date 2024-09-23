@@ -3,7 +3,7 @@ import pandas_ta as ta
 
 
 class IndicatorCalculator:
-    def __init__(self, rsi_length: int = 14, momentum_length: int = 10):
+    def __init__(self, rsi_length: int = 7, momentum_length: int = 10):
         self.rsi_length = rsi_length
         self.momentum_length = momentum_length
 
@@ -18,6 +18,7 @@ class IndicatorCalculator:
                 "VWAP": True,
                 "BollingerBands": True,
                 "Momentum": True,
+                "Volume": True,
             }
 
         # Certifique-se de que o índice é um DatetimeIndex
@@ -42,5 +43,8 @@ class IndicatorCalculator:
 
         if indicadores.get("Momentum"):
             df["Momentum"] = ta.mom(df["close"], length=self.momentum_length)
+
+        if indicadores.get("Volume"):
+            df["Volume"] = df["volume"].rolling(window=10).mean()  # Média do volume
 
         return df
