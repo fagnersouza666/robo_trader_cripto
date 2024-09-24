@@ -38,7 +38,7 @@ class TradeExecutor:
         take_profit_percent: float,
     ):
         try:
-
+            print(symbol, quantidade)
             ordem_compra = self.client.order_market_buy(
                 symbol=symbol, quantity=quantidade
             )

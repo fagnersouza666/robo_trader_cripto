@@ -9,8 +9,9 @@ from telegram_notifier import TelegramNotifier
 import datetime
 import os
 import math
-from decimal import Decimal
+from decimal import Decimal, ROUND_DOWN, ROUND_UP
 import traceback
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -40,11 +41,7 @@ class TradingBot:
 
     def calcular_stake(self, symbol: str, risco_percentual: float = 1.0) -> float:
         """
-        Calcula o valor da stake com base no risco definido (1% do saldo).
-
-        :param symbol: Par de negociação (ex: 'BTCUSDT').
-        :param risco_percentual: Percentual de risco em relação ao saldo disponível.
-        :return: Quantidade de criptomoeda a ser comprada ou vendida.
+        Calcula o valor da stake com base no risco definido (1% do saldo), verificando o notional mínimo.
         """
         # Obter o saldo da moeda de base (exemplo, saldo em USDT)
         saldo_base = self.client.get_asset_balance(asset="USDT")
@@ -55,7 +52,6 @@ class TradingBot:
 
         # Obter o preço atual do ativo
         ticker = self.client.get_symbol_ticker(symbol=symbol)
-
         preco_ativo = float(ticker["price"])
 
         # Quantidade de criptomoeda a comprar/vender com base na stake
@@ -73,39 +69,96 @@ class TradingBot:
         :param quantidade: Quantidade inicial.
         :return: Quantidade ajustada.
         """
-        info = self.client.get_symbol_info(symbol)
+        try:
+            info = self.client.get_symbol_info(symbol)
+            if not info:
+                raise ValueError(f"Informações do símbolo {symbol} não encontradas.")
 
-        filters = {f["filterType"]: f for f in info["filters"]}
+            filters = {f["filterType"]: f for f in info["filters"]}
 
-        # Filtro de tamanho de lote (quantidade mínima, máxima e incrementos)
-        lot_size = filters["LOT_SIZE"]
-        min_qty = float(lot_size["minQty"])
-        max_qty = float(lot_size["maxQty"])
-        step_size = float(lot_size["stepSize"])
+            # Filtro de tamanho de lote (quantidade mínima, máxima e incrementos)
+            lot_size = filters["LOT_SIZE"]
 
-        # Filtro de valor notional mínimo (valor mínimo em USDT que você precisa gastar)
-        notional = filters["NOTIONAL"]
-        min_notional = float(notional["minNotional"])
+            if not lot_size:
+                raise ValueError(
+                    f"Filtro LOT_SIZE não encontrado para o símbolo {symbol}."
+                )
 
-        # Calcule a quantidade mínima necessária para atender ao min_notional
-        min_quantity = max(min_qty, min_notional / preco_ativo)
+            min_qty = Decimal(lot_size["minQty"])
+            max_qty = Decimal(lot_size["maxQty"])
+            step_size = Decimal(lot_size["stepSize"])
 
-        # Ajuste a quantidade mínima ao step_size apropriado
-        step_size_decimal = "{0:.8f}".format(step_size).rstrip("0")
-        precision = (
-            len(step_size_decimal.split(".")[1]) if "." in step_size_decimal else 0
-        )
+            # Criar quantizador baseado no step_size
+            step_size_exponent = step_size.as_tuple().exponent
+            if step_size_exponent >= 0:
+                number_of_decimals = 0
+            else:
+                number_of_decimals = abs(step_size_exponent)
+            quantizer = Decimal("1e{}".format(step_size_exponent))
 
-        min_quantity = round(min_quantity, precision)
+            # Filtro de valor notional mínimo (valor mínimo em USDT que você precisa gastar)
+            notional_filter = filters.get("MIN_NOTIONAL") or filters["NOTIONAL"]
 
-        quantidade_ajustada = quantidade - (quantidade % step_size)
+            if notional_filter:
+                min_notional = Decimal(notional_filter["minNotional"])
+            else:
+                min_notional = Decimal(
+                    "10"
+                )  # Valor padrão ou ajuste conforme necessário
 
-        if quantidade_ajustada < min_quantity:
-            quantidade_ajustada = Decimal(min_quantity)
+            # Converter preco_ativo para Decimal
 
-        retorno = Decimal("{:.8f}".format(quantidade_ajustada))
+            preco_ativo_decimal = Decimal(str(preco_ativo))
 
-        return retorno
+            # Calcule a quantidade mínima necessária para atender ao min_notional
+            min_quantity = (min_notional / preco_ativo_decimal).quantize(
+                quantizer, rounding=ROUND_UP
+            )
+            min_quantity = max(min_quantity, min_qty)
+
+            # Converter quantidade para Decimal
+            quantidade_decimal = Decimal(str(quantidade))
+
+            # Ajuste a quantidade inicial para o step_size adequado
+            quantidade_ajustada = (
+                quantidade_decimal - (quantidade_decimal % step_size)
+            ).quantize(quantizer, rounding=ROUND_DOWN)
+
+            # Verifique se a quantidade ajustada atende ao min_quantity
+            if quantidade_ajustada < min_quantity:
+                quantidade_ajustada = min_quantity.quantize(
+                    quantizer, rounding=ROUND_UP
+                )
+
+            # Certifique-se de que a quantidade ajustada não excede a quantidade máxima
+            quantidade_ajustada = min(quantidade_ajustada, max_qty)
+
+            # Formatar a quantidade ajustada como string com o número correto de decimais
+            quantidade_ajustada_str = f"{quantidade_ajustada:.{number_of_decimals}f}"
+
+            # Validar o formato da quantidade ajustada
+            quantity_pattern = r"^([0-9]{1,20})(\.[0-9]{1,20})?$"
+            if not re.match(quantity_pattern, quantidade_ajustada_str):
+                raise ValueError(
+                    f"Quantidade ajustada '{quantidade_ajustada_str}' não está no formato correto."
+                )
+
+            # Logging para depuração
+            logging.debug(f"Symbol: {symbol}")
+            logging.debug(f"Quantidade Inicial: {quantidade}")
+            logging.debug(f"Preço Ativo: {preco_ativo}")
+            logging.debug(f"Min Qty: {min_qty}")
+            logging.debug(f"Max Qty: {max_qty}")
+            logging.debug(f"Step Size: {step_size}")
+            logging.debug(f"Min Notional: {min_notional}")
+            logging.debug(f"Min Quantity: {min_quantity}")
+            logging.debug(f"Quantidade Ajustada: {quantidade_ajustada_str}")
+
+            return quantidade_ajustada_str
+
+        except Exception as e:
+            logging.error(f"Erro ao ajustar quantidade para {symbol}: {e}")
+            raise
 
     def executar_trading(self):
 
@@ -127,11 +180,18 @@ class TradingBot:
 
                 # Executar ação e registrar a operação no banco de dados
                 stake = self.calcular_stake(key)
+                if stake is None:
+                    logger.error(f"Stake não foi calculado para {key}.")
+                    continue  # Pula para o próximo símbolo se stake for None
 
                 if acao == "Comprar":
                     preco_compra = self.trade_executor.executar_ordem(
                         key, stake, "buy", 1.0, 2.0
                     )
+
+                    if preco_compra is None:
+                        logger.error(f"Compra falhou para {key}.")
+                        continue
 
                     valor_total = float(stake) * preco_compra
                     self.registrar_e_notificar_operacao(
@@ -141,6 +201,11 @@ class TradingBot:
                     preco_venda = self.trade_executor.executar_ordem(
                         key, stake, "sell", 1.0, 2.0
                     )
+
+                    if preco_venda is None:
+                        logger.error(f"Venda falhou para {key}.")
+                        continue
+
                     valor_total = float(stake) * preco_venda
                     self.registrar_e_notificar_operacao(
                         key, "VENDA", float(stake), preco_venda, valor_total
