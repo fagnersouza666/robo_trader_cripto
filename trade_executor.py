@@ -1,7 +1,7 @@
 import logging
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
-from decimal import Decimal
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -9,6 +9,55 @@ logger = logging.getLogger(__name__)
 class TradeExecutor:
     def __init__(self, client: Client):
         self.client = client
+
+    def _get_lot_size_and_min_notional(self, symbol: str):
+        """Obtém o tamanho mínimo, máximo e incremento do lote e o valor mínimo de notional para o símbolo."""
+        exchange_info = self.client.get_exchange_info()
+        lot_size = None
+        min_notional = None
+
+        for s in exchange_info["symbols"]:
+            if s["symbol"] == symbol:
+                for f in s["filters"]:
+                    print(f)
+                    if f["filterType"] == "LOT_SIZE":
+                        lot_size = {
+                            "min_qty": float(f["minQty"]),
+                            "max_qty": float(f["maxQty"]),
+                            "step_size": float(f["stepSize"]),
+                        }
+                    if f["filterType"] == "NOTIONAL":
+                        min_notional = float(f["minNotional"])
+
+                # Verifica se obteve tanto o LOT_SIZE quanto o MIN_NOTIONAL
+                if lot_size is None:
+                    raise ValueError(f"LOT_SIZE não encontrado para o símbolo {symbol}")
+                if min_notional is None:
+                    logger.warning(
+                        f"MIN_NOTIONAL não encontrado para o símbolo {symbol}, definindo valor padrão."
+                    )
+                    min_notional = 0  # Ou outro valor padrão que faça sentido
+
+                return lot_size, min_notional
+
+        raise ValueError(
+            f"Não foi possível encontrar informações para o símbolo: {symbol}"
+        )
+
+    def _ajustar_quantidade(self, quantidade: float, step_size: float):
+        """Ajusta a quantidade para o incremento permitido pelo filtro."""
+        quantidade = float(quantidade)
+        step_size = float(step_size)
+
+        # Calcula a quantidade ajustada
+        quantidade_ajustada = round(quantidade - (quantidade % step_size), 8)
+
+        # A Binance espera um formato específico para a quantidade, asseguramos isso aqui
+        quantidade_ajustada_str = (
+            "{:0.8f}".format(quantidade_ajustada).rstrip("0").rstrip(".")
+        )
+
+        return quantidade_ajustada_str
 
     def executar_ordem(
         self,
@@ -18,17 +67,45 @@ class TradeExecutor:
         stop_loss_percent: float,
         take_profit_percent: float,
     ):
+        # Obtém as restrições de LOT_SIZE e MIN_NOTIONAL para o par
+        lot_size, min_notional = self._get_lot_size_and_min_notional(symbol)
 
+        # Verifica e ajusta a quantidade de acordo com o step_size
+        quantidade_ajustada_str = self._ajustar_quantidade(
+            quantidade, lot_size["step_size"]
+        )
+
+        # Calcula o valor da ordem (preço * quantidade)
+        preco_atual = float(self.client.get_symbol_ticker(symbol=symbol)["price"])
+        quantidade_ajustada = float(
+            quantidade_ajustada_str
+        )  # Certifique-se de que a quantidade seja um float para cálculo
+        notional = preco_atual * quantidade_ajustada
+
+        # Verifica se o valor (notional) está acima do mínimo exigido
+        if notional < min_notional:
+            logger.error(
+                f"Valor da ordem ({notional}) é menor que o valor mínimo permitido ({min_notional}) para {symbol}."
+            )
+            notional = float(min_notional)
+            quantidade_ajustada = min_notional / preco_atual
+            quantidade_ajustada = self._ajustar_quantidade(
+                quantidade_ajustada, lot_size["step_size"]
+            )
+
+        print(f"Quantidade ajustada: {quantidade_ajustada_str}")
+        # Aqui você já retorna a string correta para a Binance
         if ordem_tipo == "buy":
             return self._executar_ordem_buy(
-                symbol, quantidade, stop_loss_percent, take_profit_percent
+                symbol, quantidade_ajustada_str, stop_loss_percent, take_profit_percent
             )
         elif ordem_tipo == "sell":
             return self._executar_ordem_sell(
-                symbol, quantidade, stop_loss_percent, take_profit_percent
+                symbol, quantidade_ajustada_str, stop_loss_percent, take_profit_percent
             )
         else:
             logger.error(f"Tipo de ordem inválido: {ordem_tipo}")
+            return None
 
     def _executar_ordem_buy(
         self,
@@ -38,20 +115,29 @@ class TradeExecutor:
         take_profit_percent: float,
     ):
         try:
-            print(symbol, quantidade)
+            print(
+                f"Executando ordem de compra para {symbol} com quantidade {quantidade}"
+            )
+            # Executa a ordem de compra no mercado
             ordem_compra = self.client.order_market_buy(
                 symbol=symbol, quantity=quantidade
             )
-
             logger.info(f"Ordem de compra executada para {symbol}: {ordem_compra}")
-            self._configurar_ordem_limite(
-                ordem_compra, stop_loss_percent, take_profit_percent
+
+            # Obtém o preço de compra
+            preco_compra = float(ordem_compra["fills"][0]["price"])
+
+            # Configura stop loss e take profit
+            self._configurar_stop_loss_take_profit(
+                symbol, quantidade, preco_compra, stop_loss_percent, take_profit_percent
             )
 
-            return float(ordem_compra["fills"][0]["price"])
+            return preco_compra
 
         except BinanceAPIException as e:
             logger.error(f"Erro ao executar ordem de compra: {e}")
+            traceback.print_exc()
+            return None
 
     def _executar_ordem_sell(
         self,
@@ -61,25 +147,65 @@ class TradeExecutor:
         take_profit_percent: float,
     ):
         try:
+            # Executa a ordem de venda no mercado
             ordem_venda = self.client.order_market_sell(
                 symbol=symbol, quantity=quantidade
             )
             logger.info(f"Ordem de venda executada para {symbol}: {ordem_venda}")
-            self._configurar_ordem_limite(
-                ordem_venda, stop_loss_percent, take_profit_percent
+
+            # Obtém o preço de venda
+            preco_venda = float(ordem_venda["fills"][0]["price"])
+
+            # Configura stop loss e take profit
+            self._configurar_stop_loss_take_profit(
+                symbol, quantidade, preco_venda, stop_loss_percent, take_profit_percent
             )
 
-            return float(ordem_venda["fills"][0]["price"])
+            return preco_venda
 
         except BinanceAPIException as e:
             logger.error(f"Erro ao executar ordem de venda: {e}")
+            return None
 
-    def _configurar_ordem_limite(
-        self, ordem, stop_loss_percent: float, take_profit_percent: float
+    def _configurar_stop_loss_take_profit(
+        self,
+        symbol: str,
+        quantidade: float,
+        preco: float,
+        stop_loss_percent: float,
+        take_profit_percent: float,
     ):
-        preco = float(ordem["fills"][0]["price"])
-        stop_loss_price = preco * (1 - stop_loss_percent / 100)
-        take_profit_price = preco * (1 + take_profit_percent / 100)
-        logger.info(
-            f"Stop loss configurado para: {stop_loss_price} | Take profit: {take_profit_price}"
-        )
+        stop_loss_price = round(preco * (1 - stop_loss_percent / 100), 2)
+        take_profit_price = round(preco * (1 + take_profit_percent / 100), 2)
+
+        try:
+            # Cria a ordem de stop loss
+            ordem_stop_loss = self.client.create_order(
+                symbol=symbol,
+                side="SELL",
+                type="STOP_LOSS_LIMIT",
+                quantity=quantidade,
+                price=stop_loss_price,
+                stopPrice=stop_loss_price,
+                timeInForce="GTC",
+            )
+            logger.info(
+                f"Ordem de Stop Loss configurada para {symbol} ao preço: {stop_loss_price}"
+            )
+
+            # Cria a ordem de take profit
+            ordem_take_profit = self.client.create_order(
+                symbol=symbol,
+                side="SELL",
+                type="TAKE_PROFIT_LIMIT",
+                quantity=quantidade,
+                price=take_profit_price,
+                stopPrice=take_profit_price,
+                timeInForce="GTC",
+            )
+            logger.info(
+                f"Ordem de Take Profit configurada para {symbol} ao preço: {take_profit_price}"
+            )
+
+        except BinanceAPIException as e:
+            logger.error(f"Erro ao configurar Stop Loss e Take Profit: {e}")
