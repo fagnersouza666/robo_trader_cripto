@@ -180,8 +180,9 @@ class TradingBot:
                 # Analisar sentimento
                 sentimento = self.sentiment_analyzer.analisar_sentimento(value)
 
-                # Determinar ação de trading (comprar, vender, ou esperar)
-                acao = self.estrategia_trading(df, sentimento)
+                if acao == "Esperar"
+                    # Determinar ação de trading (comprar, vender, ou esperar)
+                    acao = self.estrategia_trading(df, sentimento)
 
                 # Executar ação e registrar a operação no banco de dados
                 stake = self.calcular_stake(key)
@@ -202,7 +203,7 @@ class TradingBot:
                     self.registrar_e_notificar_operacao(
                         key, "COMPRA", float(stake), preco_compra, valor_total
                     )
-                elif acao == "Vender":
+                elif acao_venda == "Vender":
                     # Obter preço médio e quantidade total de compras
                     preco_medio_compra, quantidade_total, taxas_total_compras = (
                         self.calcular_preco_medio_e_quantidade(key)
