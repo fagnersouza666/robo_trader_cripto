@@ -99,3 +99,33 @@ class DatabaseManager:
         """
         self.cursor.execute(query, (valor_atual, porcentagem_geral, valor_inicial))
         self.conn.commit()
+
+    def obter_transacoes(self, simbolo: str, tipo: str = None):
+        """
+        Obtém todas as transações de um símbolo específico.
+        O tipo de transação pode ser "COMPRA" ou "VENDA", se fornecido.
+        """
+        query = "SELECT * FROM transacoes WHERE simbolo = ?"
+        params = [simbolo]
+
+        if tipo:
+            query += " AND tipo = ?"
+            params.append(tipo)
+
+        self.cursor.execute(query, params)
+        transacoes = self.cursor.fetchall()
+
+        # Transformar resultado em uma lista de dicionários para facilitar o acesso
+        lista_transacoes = [
+            {
+                "data_hora": transacao[1],
+                "simbolo": transacao[2],
+                "tipo": transacao[3],
+                "quantidade": transacao[4],
+                "preco": transacao[5],
+                "valor_total": transacao[6],
+            }
+            for transacao in transacoes
+        ]
+
+        return lista_transacoes
