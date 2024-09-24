@@ -54,3 +54,48 @@ class DatabaseManager:
     def fechar_conexao(self):
         self.conn.close()
         logger.info("Conexão com o banco de dados fechada.")
+
+    def registrar_ganhos(
+        self,
+        data_hora,
+        simbolo,
+        valor_compras,
+        valor_vendas,
+        taxas,
+        ganhos,
+        porcentagem,
+    ):
+        """
+        Registra os ganhos após uma venda.
+        """
+        query = """
+        INSERT INTO ganhos (data_hora, simbolo, valor_compras, valor_vendas, taxas, ganhos, porcentagem)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        self.cursor.execute(
+            query,
+            (
+                data_hora,
+                simbolo,
+                valor_compras,
+                valor_vendas,
+                taxas,
+                ganhos,
+                porcentagem,
+            ),
+        )
+        self.conn.commit()
+
+    def atualizar_resumo_financeiro(
+        self, valor_inicial, valor_atual, porcentagem_geral
+    ):
+        """
+        Atualiza a tabela com o resumo financeiro geral.
+        """
+        query = """
+        UPDATE resumo_financeiro
+        SET valor_atual = %s, porcentagem_geral = %s
+        WHERE valor_inicial = %s
+        """
+        self.cursor.execute(query, (valor_atual, porcentagem_geral, valor_inicial))
+        self.conn.commit()

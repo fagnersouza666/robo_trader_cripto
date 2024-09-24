@@ -175,6 +175,8 @@ class TradingBot:
                 # Calcular indicadores
                 df = self.indicator_calculator.calcular_indicadores(df)
 
+                acao, preco_venda = self.estrategia_venda_reversao(df, key)
+
                 # Analisar sentimento
                 sentimento = self.sentiment_analyzer.analisar_sentimento(value)
 
@@ -201,21 +203,114 @@ class TradingBot:
                         key, "COMPRA", float(stake), preco_compra, valor_total
                     )
                 elif acao == "Vender":
-                    preco_venda = self.trade_executor.executar_ordem(
-                        key, stake, "sell", 1.0, 2.0
+                    # Obter preço médio e quantidade total de compras
+                    preco_medio_compra, quantidade_total, taxas_total_compras = (
+                        self.calcular_preco_medio_e_quantidade(key)
                     )
 
-                    if preco_venda is None:
+                    if quantidade_total == 0:
+                        logger.error(
+                            f"Não há quantidade acumulada para vender de {key}."
+                        )
+                        continue
+
+                    # Executar a venda de toda a quantidade acumulada
+                    preco_venda_real = self.trade_executor.executar_ordem(
+                        key, quantidade_total, "sell"
+                    )
+
+                    if preco_venda_real is None:
                         logger.error(f"Venda falhou para {key}.")
                         continue
 
-                    valor_total = float(stake) * preco_venda
-                    self.registrar_e_notificar_operacao(
-                        key, "VENDA", float(stake), preco_venda, valor_total
+                    valor_total_vendas = quantidade_total * preco_venda_real
+                    valor_total_compras = quantidade_total * preco_medio_compra
+                    ganho_total = (
+                        valor_total_vendas - valor_total_compras - taxas_total_compras
+                    )
+
+                    # Calcular porcentagem de ganho
+                    porcentagem_ganho = (ganho_total / valor_total_compras) * 100
+
+                    # Registrar no banco de dados
+                    data_hora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    self.database_manager.registrar_ganhos(
+                        data_hora,
+                        key,
+                        valor_total_compras,
+                        valor_total_vendas,
+                        taxas_total_compras,
+                        ganho_total,
+                        porcentagem_ganho,
+                    )
+
+                    # Atualizar o resumo financeiro geral
+                    valor_inicial = self.database_manager.obter_valor_inicial()
+                    valor_atual = (
+                        self.database_manager.obter_valor_total_atual()
+                    )  # soma de todas as moedas
+                    porcentagem_geral = (
+                        (valor_atual - valor_inicial) / valor_inicial
+                    ) * 100
+                    self.database_manager.atualizar_resumo_financeiro(
+                        valor_inicial, valor_atual, porcentagem_geral
+                    )
+
+                    logger.info(
+                        f"Venda registrada para {key}: Ganho de {ganho_total} USDT, porcentagem de {porcentagem_ganho:.2f}%"
                     )
             except Exception as e:
                 traceback.print_exc()
                 logger.error(f"Erro inesperado no símbolo {key}: {e}")
+
+    def calcular_preco_medio_e_quantidade(self, symbol):
+        """
+        Calcula o preço médio de compra e a quantidade total acumulada para uma moeda.
+        """
+        transacoes = self.database_manager.obter_transacoes(symbol, tipo="COMPRA")
+        valor_total_compras = 0
+        quantidade_total = 0
+        taxas_total = 0
+
+        for transacao in transacoes:
+            quantidade_total += transacao["quantidade"]
+            valor_total_compras += transacao["quantidade"] * transacao["preco"]
+            taxas_total += transacao["taxas"]
+
+        if quantidade_total == 0:
+            return 0, 0, 0  # Sem compras registradas
+
+        preco_medio = valor_total_compras / quantidade_total
+        return preco_medio, quantidade_total, taxas_total
+
+    def estrategia_venda_reversao(self, df, symbol):
+        """
+        Estratégia para detectar reversão de mercado e vender.
+        Utiliza RSI, Momentum, Bandas de Bollinger e Volume.
+        Faz a venda de todo o valor acumulado da moeda.
+        """
+        rsi = df["RSI"].iloc[-1]
+        rsi_anterior = df["RSI"].iloc[-2]
+        momentum = df["Momentum"].iloc[-1]
+        ultimo_preco = df["close"].iloc[-1]
+        preco_anterior = df["close"].iloc[-2]
+        bb_upper = df["BB_upper"].iloc[-1]
+        volume_atual = df["Volume"].iloc[-1]
+        volume_medio = df["Volume"].mean()
+
+        # Critério 1: Divergência de RSI (preço sobe, mas RSI cai)
+        if ultimo_preco > preco_anterior and rsi < rsi_anterior:
+            return "Vender", ultimo_preco
+
+        # Critério 2: Preço tocou a banda superior de Bollinger e Momentum está caindo
+        if ultimo_preco > bb_upper and momentum < 0:
+            return "Vender", ultimo_preco
+
+        # Critério 3: Volume de venda maior que a média e RSI sobrecomprado (> 70)
+        if rsi > 70 and volume_atual > volume_medio * 1.5:
+            return "Vender", ultimo_preco
+
+        return "Esperar", None
 
     def estrategia_trading(self, df, sentimento):
         rsi = df["RSI"].iloc[-1]
@@ -228,103 +323,121 @@ class TradingBot:
         bb_upper = df["BB_upper"].iloc[-1]
         bb_lower = df["BB_lower"].iloc[-1]
         momentum = df["Momentum"].iloc[-1]
+        volume_atual = df["Volume"].iloc[-1]
+        volume_medio = df["Volume"].mean()
 
         # Identificando níveis de suporte e resistência
         resistencia = bb_upper if ultimo_preco < bb_upper else vwap
         suporte = bb_lower if ultimo_preco > bb_lower else vwap
 
-        if sentimento == "Neutro":
-            if rsi < 35 and sma50 > sma200:
-                return "Comprar"
-            elif rsi > 70 and sma50 < sma200:
-                return "Vender"
+        volume_medio = df["Volume"].mean()
 
-            # Ajuste da lógica para incluir o VWAP na estratégia de day trade
-            elif rsi < 35 and ultimo_preco > vwap:
-                return "Comprar"
-            elif rsi > 70 and ultimo_preco < vwap:
-                return "Vender"
-
-            # Estratégia combinando VWAP e Bandas de Bollinger
-            elif ultimo_preco > vwap and ultimo_preco < bb_upper:
-                return "Comprar"
-            elif ultimo_preco < vwap and ultimo_preco > bb_lower:
-                return "Vender"
-
-            # Critério principal: VWAP e Momentum
-            elif ultimo_preco > vwap and momentum > 0:
-                return "Comprar"
-            elif ultimo_preco < vwap and momentum < 0:
-                return "Vender"
-
-            # Estratégia de breakout baseada no rompimento dos níveis de suporte e resistência
-            elif ultimo_preco > resistencia:
-                return "Comprar"
-            elif ultimo_preco < suporte:
-                return "Vender"
-
-            # Divergência de alta (preço menor, RSI maior)
-            elif ultimo_preco < preco_anterior and rsi > rsi_anterior:
-                return "Comprar"
-
-            # Divergência de baixa (preço maior, RSI menor)
-            elif ultimo_preco > preco_anterior and rsi < rsi_anterior:
-                return "Vender"
+        # Estratégia com base no VWAP e Volume
+        if ultimo_preco > vwap and volume_atual > volume_medio * 1.5:
+            return "Comprar"
+        elif ultimo_preco < vwap and volume_atual > volume_medio * 1.5:
+            return "Vender"
         else:
-            if rsi < 35 and sma50 > sma200 and "positivo" in sentimento.lower():
-                return "Comprar"
-            elif rsi > 70 and sma50 < sma200 and "negativo" in sentimento.lower():
-                return "Vender"
+            if sentimento == "Neutro":
+                if rsi < 35 and sma50 > sma200:
+                    return "Comprar"
+                elif rsi > 70 and sma50 < sma200:
+                    return "Vender"
 
-            # Ajuste da lógica para incluir o VWAP na estratégia de day trade
-            elif rsi < 35 and ultimo_preco > vwap and "positivo" in sentimento.lower():
-                return "Comprar"
-            elif rsi > 70 and ultimo_preco < vwap and "negativo" in sentimento.lower():
-                return "Vender"
+                # Ajuste da lógica para incluir o VWAP na estratégia de day trade
+                elif rsi < 35 and ultimo_preco > vwap:
+                    return "Comprar"
+                elif rsi > 70 and ultimo_preco < vwap:
+                    return "Vender"
 
-            # Estratégia combinando VWAP e Bandas de Bollinger
-            elif (
-                ultimo_preco > vwap
-                and ultimo_preco < bb_upper
-                and "positivo" in sentimento.lower()
-            ):
-                return "Comprar"
-            elif (
-                ultimo_preco < vwap
-                and ultimo_preco > bb_lower
-                and "negativo" in sentimento.lower()
-            ):
-                return "Vender"
+                # Estratégia combinando VWAP e Bandas de Bollinger
+                elif ultimo_preco > vwap and ultimo_preco < bb_upper:
+                    return "Comprar"
+                elif ultimo_preco < vwap and ultimo_preco > bb_lower:
+                    return "Vender"
 
-            # Critério principal: VWAP e Momentum
-            elif (
-                ultimo_preco > vwap
-                and momentum > 0
-                and "positivo" in sentimento.lower()
-            ):
-                return "Comprar"
-            elif (
-                ultimo_preco < vwap
-                and momentum < 0
-                and "negativo" in sentimento.lower()
-            ):
-                return "Vender"
+                # Critério principal: VWAP e Momentum
+                elif ultimo_preco > vwap and momentum > 0:
+                    return "Comprar"
+                elif ultimo_preco < vwap and momentum < 0:
+                    return "Vender"
 
-            # Estratégia de breakout baseada no rompimento dos níveis de suporte e resistência
-            elif ultimo_preco > resistencia and "positivo" in sentimento.lower():
-                return "Comprar"
-            elif ultimo_preco < suporte and "negativo" in sentimento.lower():
-                return "Vender"
+                # Estratégia de breakout baseada no rompimento dos níveis de suporte e resistência
+                elif ultimo_preco > resistencia:
+                    return "Comprar"
+                elif ultimo_preco < suporte:
+                    return "Vender"
 
-            # Divergência de alta (preço menor, RSI maior)
-            elif ultimo_preco < preco_anterior and rsi > rsi_anterior:
-                return "Comprar"
+                # Divergência de alta (preço menor, RSI maior)
+                elif ultimo_preco < preco_anterior and rsi > rsi_anterior:
+                    return "Comprar"
 
-            # Divergência de baixa (preço maior, RSI menor)
-            elif ultimo_preco > preco_anterior and rsi < rsi_anterior:
-                return "Vender"
+                # Divergência de baixa (preço maior, RSI menor)
+                elif ultimo_preco > preco_anterior and rsi < rsi_anterior:
+                    return "Vender"
+            else:
+                if rsi < 35 and sma50 > sma200 and "positivo" in sentimento.lower():
+                    return "Comprar"
+                elif rsi > 70 and sma50 < sma200 and "negativo" in sentimento.lower():
+                    return "Vender"
 
-        return "Esperar"
+                # Ajuste da lógica para incluir o VWAP na estratégia de day trade
+                elif (
+                    rsi < 35
+                    and ultimo_preco > vwap
+                    and "positivo" in sentimento.lower()
+                ):
+                    return "Comprar"
+                elif (
+                    rsi > 70
+                    and ultimo_preco < vwap
+                    and "negativo" in sentimento.lower()
+                ):
+                    return "Vender"
+
+                # Estratégia combinando VWAP e Bandas de Bollinger
+                elif (
+                    ultimo_preco > vwap
+                    and ultimo_preco < bb_upper
+                    and "positivo" in sentimento.lower()
+                ):
+                    return "Comprar"
+                elif (
+                    ultimo_preco < vwap
+                    and ultimo_preco > bb_lower
+                    and "negativo" in sentimento.lower()
+                ):
+                    return "Vender"
+
+                # Critério principal: VWAP e Momentum
+                elif (
+                    ultimo_preco > vwap
+                    and momentum > 0
+                    and "positivo" in sentimento.lower()
+                ):
+                    return "Comprar"
+                elif (
+                    ultimo_preco < vwap
+                    and momentum < 0
+                    and "negativo" in sentimento.lower()
+                ):
+                    return "Vender"
+
+                # Estratégia de breakout baseada no rompimento dos níveis de suporte e resistência
+                elif ultimo_preco > resistencia and "positivo" in sentimento.lower():
+                    return "Comprar"
+                elif ultimo_preco < suporte and "negativo" in sentimento.lower():
+                    return "Vender"
+
+                # Divergência de alta (preço menor, RSI maior)
+                elif ultimo_preco < preco_anterior and rsi > rsi_anterior:
+                    return "Comprar"
+
+                # Divergência de baixa (preço maior, RSI menor)
+                elif ultimo_preco > preco_anterior and rsi < rsi_anterior:
+                    return "Vender"
+
+            return "Esperar"
 
     def registrar_e_notificar_operacao(
         self, symbol, tipo_operacao, quantidade, preco, valor_total
