@@ -180,7 +180,7 @@ class TradingBot:
                 # Analisar sentimento
                 sentimento = self.sentiment_analyzer.analisar_sentimento(value)
 
-                if acao == "Esperar"
+                if acao == "Esperar":
                     # Determinar ação de trading (comprar, vender, ou esperar)
                     acao = self.estrategia_trading(df, sentimento)
 
