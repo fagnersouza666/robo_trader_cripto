@@ -203,7 +203,7 @@ class TradingBot:
                     self.registrar_e_notificar_operacao(
                         key, "COMPRA", float(stake), preco_compra, valor_total
                     )
-                elif acao_venda == "Vender":
+                elif acao == "Vender":
                     # Obter preço médio e quantidade total de compras
                     preco_medio_compra, quantidade_total, taxas_total_compras = (
                         self.calcular_preco_medio_e_quantidade(key)
