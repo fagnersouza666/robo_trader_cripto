@@ -27,6 +27,9 @@ class TradingBot:
         interval=Client.KLINE_INTERVAL_15MINUTE,
     ):
         self.client = Client(api_key=binance_api_key, api_secret=binance_secret_key)
+        self.client.API_URL = "https://api.binance.com/api/v3"
+        self.client.ping()
+        self.client.time_sync = True
         self.data_handler = DataHandler(self.client, interval)
         self.indicator_calculator = IndicatorCalculator()
         self.sentiment_analyzer = SentimentAnalyzer(
