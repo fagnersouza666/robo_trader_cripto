@@ -290,28 +290,32 @@ class TradingBot:
         Utiliza RSI, Momentum, Bandas de Bollinger e Volume.
         Faz a venda de todo o valor acumulado da moeda.
         """
-        rsi = df["RSI"].iloc[-1]
-        rsi_anterior = df["RSI"].iloc[-2]
-        momentum = df["Momentum"].iloc[-1]
-        ultimo_preco = df["close"].iloc[-1]
-        preco_anterior = df["close"].iloc[-2]
-        bb_upper = df["BB_upper"].iloc[-1]
-        volume_atual = df["Volume"].iloc[-1]
-        volume_medio = df["Volume"].mean()
+        try:
+            rsi = df["RSI"].iloc[-1]
+            rsi_anterior = df["RSI"].iloc[-2]
+            momentum = df["Momentum"].iloc[-1]
+            ultimo_preco = df["close"].iloc[-1]
+            preco_anterior = df["close"].iloc[-2]
+            bb_upper = df["BB_upper"].iloc[-1]
+            volume_atual = df["Volume"].iloc[-1]
+            volume_medio = df["Volume"].mean()
 
-        # Critério 1: Divergência de RSI (preço sobe, mas RSI cai)
-        if ultimo_preco > preco_anterior and rsi < rsi_anterior:
-            return "Vender", ultimo_preco
+            # Critério 1: Divergência de RSI (preço sobe, mas RSI cai)
+            if ultimo_preco > preco_anterior and rsi < rsi_anterior:
+                return "Vender", ultimo_preco
 
-        # Critério 2: Preço tocou a banda superior de Bollinger e Momentum está caindo
-        if ultimo_preco > bb_upper and momentum < 0:
-            return "Vender", ultimo_preco
+            # Critério 2: Preço tocou a banda superior de Bollinger e Momentum está caindo
+            if ultimo_preco > bb_upper and momentum < 0:
+                return "Vender", ultimo_preco
 
-        # Critério 3: Volume de venda maior que a média e RSI sobrecomprado (> 70)
-        if rsi > 70 and volume_atual > volume_medio * 1.5:
-            return "Vender", ultimo_preco
+            # Critério 3: Volume de venda maior que a média e RSI sobrecomprado (> 70)
+            if rsi > 70 and volume_atual > volume_medio * 1.5:
+                return "Vender", ultimo_preco
 
-        return "Esperar", None
+            return "Esperar", None
+
+        except Exception as e:
+            return "Esperar", None
 
     def estrategia_trading(self, df, sentimento):
         rsi = df["RSI"].iloc[-1]
