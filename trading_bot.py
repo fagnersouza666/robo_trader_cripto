@@ -312,10 +312,10 @@ class TradingBot:
             if rsi > 70 and volume_atual > volume_medio * 1.5:
                 return "Vender", ultimo_preco
 
-            return "Esperar", None
+            return "Esperar", 0.0
 
         except Exception as e:
-            return "Esperar", None
+            return "Esperar", 0.0
 
     def estrategia_trading(self, df, sentimento):
         rsi = df["RSI"].iloc[-1]
