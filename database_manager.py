@@ -37,7 +37,7 @@ class DatabaseManager:
         with self.conn:
             self.cursor.execute(
                 """
-                CREATE TABLE IF NOT EXISTS transacoes (
+                CREATE TABLE IF NOT EXISTS ganhos (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     data_hora TEXT, 
                     simbolo TEXT, 
