@@ -283,26 +283,26 @@ class TradeExecutor:
                 f"Ordem de Stop Loss configurada para {symbol} ao preço: {stop_loss_price}"
             )
 
-            # Verifique se há saldo suficiente para configurar a ordem de Take Profit
-            if saldo_disponivel < (float(quantidade_ajustada_str) * take_profit_price):
-                logger.error(
-                    f"Saldo insuficiente para configurar o Take Profit para {symbol}. Saldo disponível: {saldo_disponivel}, necessário: {float(quantidade_ajustada_str) * take_profit_price}"
-                )
-                return None
+            # # Verifique se há saldo suficiente para configurar a ordem de Take Profit
+            # if saldo_disponivel < (float(quantidade_ajustada_str) * take_profit_price):
+            #     logger.error(
+            #         f"Saldo insuficiente para configurar o Take Profit para {symbol}. Saldo disponível: {saldo_disponivel}, necessário: {float(quantidade_ajustada_str) * take_profit_price}"
+            #     )
+            #     return None
 
-            # Cria a ordem de Take Profit com a quantidade ajustada
-            ordem_take_profit = self.client.create_order(
-                symbol=symbol,
-                side="SELL",
-                type="TAKE_PROFIT_LIMIT",
-                quantity=quantidade_ajustada_str,  # Usar a quantidade ajustada
-                price=take_profit_price,
-                stopPrice=take_profit_price,
-                timeInForce="GTC",
-            )
-            logger.info(
-                f"Ordem de Take Profit configurada para {symbol} ao preço: {take_profit_price}"
-            )
+            # # Cria a ordem de Take Profit com a quantidade ajustada
+            # ordem_take_profit = self.client.create_order(
+            #     symbol=symbol,
+            #     side="SELL",
+            #     type="TAKE_PROFIT_LIMIT",
+            #     quantity=quantidade_ajustada_str,  # Usar a quantidade ajustada
+            #     price=take_profit_price,
+            #     stopPrice=take_profit_price,
+            #     timeInForce="GTC",
+            # )
+            # logger.info(
+            #     f"Ordem de Take Profit configurada para {symbol} ao preço: {take_profit_price}"
+            # )
 
         except BinanceAPIException as e:
             logger.error(f"Erro ao configurar Stop Loss e Take Profit: {e}")
