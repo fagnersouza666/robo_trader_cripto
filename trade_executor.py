@@ -59,6 +59,13 @@ class TradeExecutor:
 
         return quantidade_ajustada_str
 
+    def verificar_saldo(self, symbol: str):
+        saldo_base = self.client.get_asset_balance(asset="USDT")
+        saldo_disponivel = float(saldo_base["free"])
+
+        logger.info(f"Saldo disponível em USDT: {saldo_disponivel}")
+        return saldo_disponivel
+
     def executar_ordem(
         self,
         symbol: str,
@@ -119,6 +126,21 @@ class TradeExecutor:
             )
 
         print(f"Quantidade ajustada: {quantidade_ajustada_str}")
+
+        saldo_disponivel = self.verificar_saldo(symbol)
+
+        if notional > saldo_disponivel:
+            # Ajustar a quantidade com base no saldo disponível
+            quantidade_ajustada = saldo_disponivel / preco_atual
+            quantidade_ajustada_str = self._ajustar_quantidade(
+                quantidade_ajustada, lot_size["step_size"]
+            )
+            notional = preco_atual * float(quantidade_ajustada_str)
+
+            logger.info(
+                f"Quantidade ajustada para o saldo disponível: {quantidade_ajustada_str}, Notional: {notional}"
+            )
+
         # Aqui você já retorna a string correta para a Binance
         if ordem_tipo == "buy":
             resultado = self._executar_ordem_buy(
@@ -205,6 +227,11 @@ class TradeExecutor:
             self._configurar_stop_loss_take_profit(
                 symbol, quantidade, preco_venda, stop_loss_percent, take_profit_percent
             )
+
+            if taxa is None:
+                taxa = 0.0
+            if preco_venda is None:
+                preco_venda = 0.0
 
             return preco_venda, taxa
 
