@@ -43,9 +43,10 @@ class DatabaseManager:
                     simbolo TEXT, 
                     valor_compras REAL, 
                     valor_vendas REAL, 
-                    taxa REAL, 
+                    taxa_compra REAL, 
                     ganhos REAL, 
-                    porcentagem REAL
+                    porcentagem REAL,
+                    taxa_venda REAL
                 )
             """
             )
@@ -95,16 +96,16 @@ class DatabaseManager:
         simbolo,
         valor_compras,
         valor_vendas,
-        taxas,
+        taxa_compra,
         ganhos,
         porcentagem,
-        taxa,
+        taxa_venda,
     ):
         """
         Registra os ganhos após uma venda.
         """
         query = """
-        INSERT INTO ganhos (data_hora, simbolo, valor_compras, valor_vendas, taxa, ganhos, porcentagem)
+        INSERT INTO ganhos (data_hora, simbolo, valor_compras, valor_vendas, taxa_compra, ganhos, porcentagem, taxa_venda)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         self.cursor.execute(

@@ -247,33 +247,34 @@ class TradeExecutor:
         stop_loss_percent: float,
         take_profit_percent: float,
     ):
-        # Converta 'quantidade' e 'stop_loss_price' para float caso estejam em formato de string
-        quantidade = float(quantidade)
-        stop_loss_price = float(
-            preco * (1 - stop_loss_percent / 100)
-        )  # Já garante que stop_loss_price é float
-        take_profit_price = float(
-            preco * (1 + take_profit_percent / 100)
-        )  # Garante o mesmo para take_profit_price
-
         saldo_disponivel = self.verificar_saldo(
             "USDT"
         )  # Verifique o saldo disponível em USDT
 
+        # Calcular os preços de Stop Loss e Take Profit
+        stop_loss_price = round(preco * (1 - stop_loss_percent / 100), 2)
+        take_profit_price = round(preco * (1 + take_profit_percent / 100), 2)
+
         try:
+            # Ajustar a quantidade com o step_size correto
+            lot_size, _ = self._get_lot_size_and_min_notional(symbol)
+            quantidade_ajustada_str = self._ajustar_quantidade(
+                quantidade, lot_size["step_size"]
+            )
+
             # Verifique se há saldo suficiente para configurar a ordem de Stop Loss
-            if saldo_disponivel < (quantidade * stop_loss_price):
+            if saldo_disponivel < (float(quantidade_ajustada_str) * stop_loss_price):
                 logger.error(
-                    f"Saldo insuficiente para configurar o Stop Loss para {symbol}. Saldo disponível: {saldo_disponivel}, necessário: {quantidade * stop_loss_price}"
+                    f"Saldo insuficiente para configurar o Stop Loss para {symbol}. Saldo disponível: {saldo_disponivel}, necessário: {float(quantidade_ajustada_str) * stop_loss_price}"
                 )
                 return None
 
-            # Cria a ordem de Stop Loss
+            # Cria a ordem de Stop Loss com a quantidade ajustada
             ordem_stop_loss = self.client.create_order(
                 symbol=symbol,
                 side="SELL",
                 type="STOP_LOSS_LIMIT",
-                quantity=quantidade,
+                quantity=quantidade_ajustada_str,  # Usar a quantidade ajustada
                 price=stop_loss_price,
                 stopPrice=stop_loss_price,
                 timeInForce="GTC",
@@ -283,18 +284,18 @@ class TradeExecutor:
             )
 
             # Verifique se há saldo suficiente para configurar a ordem de Take Profit
-            if saldo_disponivel < (quantidade * take_profit_price):
+            if saldo_disponivel < (float(quantidade_ajustada_str) * take_profit_price):
                 logger.error(
-                    f"Saldo insuficiente para configurar o Take Profit para {symbol}. Saldo disponível: {saldo_disponivel}, necessário: {quantidade * take_profit_price}"
+                    f"Saldo insuficiente para configurar o Take Profit para {symbol}. Saldo disponível: {saldo_disponivel}, necessário: {float(quantidade_ajustada_str) * take_profit_price}"
                 )
                 return None
 
-            # Cria a ordem de Take Profit
+            # Cria a ordem de Take Profit com a quantidade ajustada
             ordem_take_profit = self.client.create_order(
                 symbol=symbol,
                 side="SELL",
                 type="TAKE_PROFIT_LIMIT",
-                quantity=quantidade,
+                quantity=quantidade_ajustada_str,  # Usar a quantidade ajustada
                 price=take_profit_price,
                 stopPrice=take_profit_price,
                 timeInForce="GTC",
