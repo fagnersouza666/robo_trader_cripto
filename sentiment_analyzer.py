@@ -25,7 +25,9 @@ class SentimentAnalyzer:
             "api_key": self.cryptocompare_api_key,
         }
         response = requests.get(
-            "https://min-api.cryptocompare.com/data/v2/news/", params=params
+            "https://min-api.cryptocompare.com/data/v2/news/",
+            params=params,
+            timeout=20,  # Set the timeout to 20 seconds
         )
         response.raise_for_status()
         return response.json().get("Data", [])
