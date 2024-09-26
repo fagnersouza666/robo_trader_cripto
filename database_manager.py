@@ -12,9 +12,9 @@ class DatabaseManager:
     def _conectar(self):
         self.conn = sqlite3.connect(self.db_name)
         self.cursor = self.conn.cursor()
-        self.criar_tabela_transacoes
-        self.criar_tabela_ganhos
-        self.criar_tabela_resumo
+        self.criar_tabela_transacoes()
+        self.criar_tabela_ganhos()
+        self.criar_tabela_resumo()
 
     def criar_tabela_transacoes(self):
         with self.conn:
