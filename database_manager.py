@@ -78,9 +78,9 @@ class DatabaseManager:
             self.cursor.execute(
                 """
                 INSERT INTO transacoes (data_hora, simbolo, tipo, quantidade, preco, valor_total, taxa)
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?,?)
             """,
-                (data_hora, simbolo, tipo, quantidade, preco, valor_total),
+                (data_hora, simbolo, tipo, quantidade, preco, valor_total, taxa),
             )
             logger.info(
                 f"Transação registrada: {tipo} de {quantidade} {simbolo} a {preco} USDT"
@@ -106,7 +106,7 @@ class DatabaseManager:
         """
         query = """
         INSERT INTO ganhos (data_hora, simbolo, valor_compras, valor_vendas, taxa_compra, ganhos, porcentagem, taxa_venda)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         self.cursor.execute(
             query,
@@ -115,9 +115,10 @@ class DatabaseManager:
                 simbolo,
                 valor_compras,
                 valor_vendas,
-                taxa,
+                taxa_compra,
                 ganhos,
                 porcentagem,
+                taxa_venda,
             ),
         )
         self.conn.commit()
