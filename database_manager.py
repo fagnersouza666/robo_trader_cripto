@@ -71,7 +71,7 @@ class DatabaseManager:
         quantidade: float,
         preco: float,
         valor_total: float,
-        taxas: float,
+        taxa: float,
     ):
         with self.conn:
             self.cursor.execute(

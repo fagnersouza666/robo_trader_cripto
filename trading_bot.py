@@ -280,7 +280,7 @@ class TradingBot:
         for transacao in transacoes:
             quantidade_total += transacao["quantidade"]
             valor_total_compras += transacao["quantidade"] * transacao["preco"]
-            taxas_total += transacao["taxas"]
+            taxas_total += transacao["taxa"]
 
         if quantidade_total == 0:
             return 0, 0, 0  # Sem compras registradas
