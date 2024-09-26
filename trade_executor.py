@@ -247,13 +247,18 @@ class TradeExecutor:
         stop_loss_percent: float,
         take_profit_percent: float,
     ):
+        # Converta 'quantidade' e 'stop_loss_price' para float caso estejam em formato de string
+        quantidade = float(quantidade)
+        stop_loss_price = float(
+            preco * (1 - stop_loss_percent / 100)
+        )  # Já garante que stop_loss_price é float
+        take_profit_price = float(
+            preco * (1 + take_profit_percent / 100)
+        )  # Garante o mesmo para take_profit_price
+
         saldo_disponivel = self.verificar_saldo(
             "USDT"
         )  # Verifique o saldo disponível em USDT
-
-        # Calcular os valores de Stop Loss e Take Profit
-        stop_loss_price = round(preco * (1 - stop_loss_percent / 100), 2)
-        take_profit_price = round(preco * (1 + take_profit_percent / 100), 2)
 
         try:
             # Verifique se há saldo suficiente para configurar a ordem de Stop Loss
