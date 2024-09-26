@@ -12,7 +12,9 @@ class DatabaseManager:
     def _conectar(self):
         self.conn = sqlite3.connect(self.db_name)
         self.cursor = self.conn.cursor()
-        self.criar_tabela_transacoes()
+        self.criar_tabela_transacoes
+        self.criar_tabela_ganhos
+        self.criar_tabela_resumo
 
     def criar_tabela_transacoes(self):
         with self.conn:
@@ -27,6 +29,36 @@ class DatabaseManager:
                     preco REAL,
                     valor_total REAL,
                     taxa REAL
+                )
+            """
+            )
+
+    def criar_tabela_ganhos(self):
+        with self.conn:
+            self.cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS transacoes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    data_hora TEXT, 
+                    simbolo TEXT, 
+                    valor_compras REAL, 
+                    valor_vendas REAL, 
+                    taxa REAL, 
+                    ganhos REAL, 
+                    porcentagem REAL
+                )
+            """
+            )
+
+    def criar_tabela_resumo(self):
+        with self.conn:
+            self.cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS resumo_financeiro (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    valor_inicial REAL,
+                    valor_atual REAL,
+                    porcentagem_geral REAL
                 )
             """
             )
