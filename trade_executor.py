@@ -87,15 +87,25 @@ class TradeExecutor:
             logger.error(
                 f"Valor da ordem ({notional}) é menor que o valor mínimo permitido ({min_notional}) para {symbol}."
             )
-            notional = float(min_notional)
+
             quantidade_ajustada = (min_notional * 1.01) / preco_atual
             quantidade_ajustada_str = self._ajustar_quantidade(
                 quantidade_ajustada, lot_size["step_size"]
             )
 
-            # Continuar a execução com o valor ajustado
+            # Recalcular o notional após o ajuste de quantidade
+            notional = preco_atual * float(quantidade_ajustada_str)
             logger.info(
-                f"Quantidade ajustada para {quantidade_ajustada_str} para atingir o valor mínimo."
+                f"Quantidade ajustada para {quantidade_ajustada_str} para atingir o valor mínimo de {min_notional}. Novo notional: {notional}"
+            )
+        # Verifique se a quantidade ajustada está acima de minQty
+        if float(quantidade_ajustada_str) < lot_size["min_qty"]:
+            logger.error(
+                f"Quantidade ajustada ({quantidade_ajustada_str}) está abaixo do tamanho mínimo de lote permitido ({lot_size['min_qty']}) para {symbol}."
+            )
+            quantidade_ajustada_str = "{:0.8f}".format(lot_size["min_qty"])
+            logger.info(
+                f"Quantidade ajustada para o mínimo de lote permitido: {quantidade_ajustada_str}"
             )
 
         print(f"Quantidade ajustada: {quantidade_ajustada_str}")
