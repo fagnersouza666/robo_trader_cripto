@@ -89,8 +89,13 @@ class TradeExecutor:
             )
             notional = float(min_notional)
             quantidade_ajustada = min_notional / preco_atual
-            quantidade_ajustada = self._ajustar_quantidade(
+            quantidade_ajustada_str = self._ajustar_quantidade(
                 quantidade_ajustada, lot_size["step_size"]
+            )
+
+            # Continuar a execução com o valor ajustado
+            logger.info(
+                f"Quantidade ajustada para {quantidade_ajustada_str} para atingir o valor mínimo."
             )
 
         print(f"Quantidade ajustada: {quantidade_ajustada_str}")
