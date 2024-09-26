@@ -195,6 +195,10 @@ class TradingBot:
                         key, stake, "buy", 1.0, 2.0
                     )
 
+                    logger.info(
+                        f"Preco Compra: {preco_compra}, Taxa: {taxa} para {key}"
+                    )
+
                     if preco_compra is None:
                         logger.error(f"Compra falhou para {key}.")
                         continue

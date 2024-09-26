@@ -88,7 +88,7 @@ class TradeExecutor:
                 f"Valor da ordem ({notional}) é menor que o valor mínimo permitido ({min_notional}) para {symbol}."
             )
             notional = float(min_notional)
-            quantidade_ajustada = min_notional / preco_atual
+            quantidade_ajustada = (min_notional * 1.01) / preco_atual
             quantidade_ajustada_str = self._ajustar_quantidade(
                 quantidade_ajustada, lot_size["step_size"]
             )
@@ -101,13 +101,23 @@ class TradeExecutor:
         print(f"Quantidade ajustada: {quantidade_ajustada_str}")
         # Aqui você já retorna a string correta para a Binance
         if ordem_tipo == "buy":
-            return self._executar_ordem_buy(
+            resultado = self._executar_ordem_buy(
                 symbol, quantidade_ajustada_str, stop_loss_percent, take_profit_percent
             )
+
+            logger.info(f"Resultado da execução da ordem de compra: {resultado}")
+
+            return resultado
+
         elif ordem_tipo == "sell":
-            return self._executar_ordem_sell(
+            retorno = self._executar_ordem_sell(
                 symbol, quantidade_ajustada_str, stop_loss_percent, take_profit_percent
             )
+
+            logger.info(f"Resultado da execução da ordem de venda: {resultado}")
+
+            return retorno
+
         else:
             logger.error(f"Tipo de ordem inválido: {ordem_tipo}")
             return None
