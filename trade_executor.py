@@ -126,13 +126,15 @@ class TradeExecutor:
 
             # Obtém o preço de compra
             preco_compra = float(ordem_compra["fills"][0]["price"])
+            taxaM = float(ordem_compra["fills"][0]["commission"])
+            taxa = taxaM * preco_compra
 
             # Configura stop loss e take profit
             self._configurar_stop_loss_take_profit(
                 symbol, quantidade, preco_compra, stop_loss_percent, take_profit_percent
             )
 
-            return preco_compra
+            return preco_compra, taxa
 
         except BinanceAPIException as e:
             logger.error(f"Erro ao executar ordem de compra: {e}")
@@ -156,12 +158,15 @@ class TradeExecutor:
             # Obtém o preço de venda
             preco_venda = float(ordem_venda["fills"][0]["price"])
 
+            taxaM = float(preco_venda["fills"][0]["commission"])
+            taxa = taxaM * preco_venda
+
             # Configura stop loss e take profit
             self._configurar_stop_loss_take_profit(
                 symbol, quantidade, preco_venda, stop_loss_percent, take_profit_percent
             )
 
-            return preco_venda
+            return preco_venda, taxa
 
         except BinanceAPIException as e:
             logger.error(f"Erro ao executar ordem de venda: {e}")

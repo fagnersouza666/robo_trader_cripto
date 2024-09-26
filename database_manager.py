@@ -25,7 +25,8 @@ class DatabaseManager:
                     tipo TEXT,
                     quantidade REAL,
                     preco REAL,
-                    valor_total REAL
+                    valor_total REAL,
+                    taxa REAL
                 )
             """
             )
@@ -38,11 +39,12 @@ class DatabaseManager:
         quantidade: float,
         preco: float,
         valor_total: float,
+        taxas: float,
     ):
         with self.conn:
             self.cursor.execute(
                 """
-                INSERT INTO transacoes (data_hora, simbolo, tipo, quantidade, preco, valor_total)
+                INSERT INTO transacoes (data_hora, simbolo, tipo, quantidade, preco, valor_total, taxas)
                 VALUES (?, ?, ?, ?, ?, ?)
             """,
                 (data_hora, simbolo, tipo, quantidade, preco, valor_total),
@@ -64,12 +66,13 @@ class DatabaseManager:
         taxas,
         ganhos,
         porcentagem,
+        taxa,
     ):
         """
         Registra os ganhos após uma venda.
         """
         query = """
-        INSERT INTO ganhos (data_hora, simbolo, valor_compras, valor_vendas, taxas, ganhos, porcentagem)
+        INSERT INTO ganhos (data_hora, simbolo, valor_compras, valor_vendas, taxa, ganhos, porcentagem)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         self.cursor.execute(
@@ -79,7 +82,7 @@ class DatabaseManager:
                 simbolo,
                 valor_compras,
                 valor_vendas,
-                taxas,
+                taxa,
                 ganhos,
                 porcentagem,
             ),
@@ -124,6 +127,7 @@ class DatabaseManager:
                 "quantidade": transacao[4],
                 "preco": transacao[5],
                 "valor_total": transacao[6],
+                "taxa": transacao[7],
             }
             for transacao in transacoes
         ]

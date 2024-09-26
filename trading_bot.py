@@ -191,7 +191,7 @@ class TradingBot:
                     continue  # Pula para o próximo símbolo se stake for None
 
                 if acao == "Comprar":
-                    preco_compra = self.trade_executor.executar_ordem(
+                    preco_compra, taxa = self.trade_executor.executar_ordem(
                         key, stake, "buy", 1.0, 2.0
                     )
 
@@ -209,57 +209,57 @@ class TradingBot:
                         self.calcular_preco_medio_e_quantidade(key)
                     )
 
-                    if quantidade_total == 0:
-                        logger.error(
-                            f"Não há quantidade acumulada para vender de {key}."
+                    if quantidade_total != 0:
+                        # Executar a venda de toda a quantidade acumulada
+                        preco_venda_real, taxa = self.trade_executor.executar_ordem(
+                            key, quantidade_total, "sell"
                         )
-                        continue
 
-                    # Executar a venda de toda a quantidade acumulada
-                    preco_venda_real = self.trade_executor.executar_ordem(
-                        key, quantidade_total, "sell"
-                    )
+                        if preco_venda_real is None:
+                            logger.error(f"Venda falhou para {key}.")
+                            continue
 
-                    if preco_venda_real is None:
-                        logger.error(f"Venda falhou para {key}.")
-                        continue
+                        valor_total_vendas = quantidade_total * preco_venda_real
+                        valor_total_compras = quantidade_total * preco_medio_compra
+                        ganho_total = (
+                            valor_total_vendas
+                            - valor_total_compras
+                            - taxas_total_compras
+                        )
 
-                    valor_total_vendas = quantidade_total * preco_venda_real
-                    valor_total_compras = quantidade_total * preco_medio_compra
-                    ganho_total = (
-                        valor_total_vendas - valor_total_compras - taxas_total_compras
-                    )
+                        # Calcular porcentagem de ganho
+                        porcentagem_ganho = (ganho_total / valor_total_compras) * 100
 
-                    # Calcular porcentagem de ganho
-                    porcentagem_ganho = (ganho_total / valor_total_compras) * 100
+                        # Registrar no banco de dados
+                        data_hora = datetime.datetime.now().strftime(
+                            "%Y-%m-%d %H:%M:%S"
+                        )
+                        self.database_manager.registrar_ganhos(
+                            data_hora,
+                            key,
+                            valor_total_compras,
+                            valor_total_vendas,
+                            taxas_total_compras,
+                            ganho_total,
+                            porcentagem_ganho,
+                            taxa,
+                        )
 
-                    # Registrar no banco de dados
-                    data_hora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    self.database_manager.registrar_ganhos(
-                        data_hora,
-                        key,
-                        valor_total_compras,
-                        valor_total_vendas,
-                        taxas_total_compras,
-                        ganho_total,
-                        porcentagem_ganho,
-                    )
+                        # Atualizar o resumo financeiro geral
+                        valor_inicial = self.database_manager.obter_valor_inicial()
+                        valor_atual = (
+                            self.database_manager.obter_valor_total_atual()
+                        )  # soma de todas as moedas
+                        porcentagem_geral = (
+                            (valor_atual - valor_inicial) / valor_inicial
+                        ) * 100
+                        self.database_manager.atualizar_resumo_financeiro(
+                            valor_inicial, valor_atual, porcentagem_geral
+                        )
 
-                    # Atualizar o resumo financeiro geral
-                    valor_inicial = self.database_manager.obter_valor_inicial()
-                    valor_atual = (
-                        self.database_manager.obter_valor_total_atual()
-                    )  # soma de todas as moedas
-                    porcentagem_geral = (
-                        (valor_atual - valor_inicial) / valor_inicial
-                    ) * 100
-                    self.database_manager.atualizar_resumo_financeiro(
-                        valor_inicial, valor_atual, porcentagem_geral
-                    )
-
-                    logger.info(
-                        f"Venda registrada para {key}: Ganho de {ganho_total} USDT, porcentagem de {porcentagem_ganho:.2f}%"
-                    )
+                        logger.info(
+                            f"Venda registrada para {key}: Ganho de {ganho_total} USDT, porcentagem de {porcentagem_ganho:.2f}%"
+                        )
             except Exception as e:
                 traceback.print_exc()
                 logger.error(f"Erro inesperado no símbolo {key}: {e}")
