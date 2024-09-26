@@ -127,7 +127,12 @@ class TradeExecutor:
             # Obtém o preço de compra
             preco_compra = float(ordem_compra["fills"][0]["price"])
             taxaM = float(ordem_compra["fills"][0]["commission"])
+
+            print(f" Preco Compra: {preco_compra} | Taxa: {taxaM}")
+
             taxa = taxaM * preco_compra
+
+            print(f"taxa: {taxa}")
 
             # Configura stop loss e take profit
             self._configurar_stop_loss_take_profit(
