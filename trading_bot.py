@@ -205,7 +205,7 @@ class TradingBot:
 
                     valor_total = float(stake) * preco_compra
                     self.registrar_e_notificar_operacao(
-                        key, "COMPRA", float(stake), preco_compra, valor_total
+                        key, "COMPRA", float(stake), preco_compra, valor_total, taxa
                     )
                 elif acao == "Vender":
                     # Obter preço médio e quantidade total de compras
@@ -263,6 +263,15 @@ class TradingBot:
 
                         logger.info(
                             f"Venda registrada para {key}: Ganho de {ganho_total} USDT, porcentagem de {porcentagem_ganho:.2f}%"
+                        )
+
+                        self.registrar_e_notificar_operacao(
+                            key,
+                            "VENDA",
+                            float(stake),
+                            preco_venda_real,
+                            valor_total_vendas,
+                            taxa,
                         )
             except Exception as e:
                 traceback.print_exc()
@@ -449,7 +458,7 @@ class TradingBot:
             return "Esperar"
 
     def registrar_e_notificar_operacao(
-        self, symbol, tipo_operacao, quantidade, preco, valor_total
+        self, symbol, tipo_operacao, quantidade, preco, valor_total, taxa
     ):
 
         quantidade = f"{quantidade:.8f}"
@@ -463,6 +472,7 @@ class TradingBot:
             quantidade=quantidade,
             preco=preco,
             valor_total=valor_total,
+            taxa=taxa,
         )
 
         # Enviar notificação para o Telegram

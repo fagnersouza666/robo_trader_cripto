@@ -76,7 +76,7 @@ class DatabaseManager:
         with self.conn:
             self.cursor.execute(
                 """
-                INSERT INTO transacoes (data_hora, simbolo, tipo, quantidade, preco, valor_total, taxas)
+                INSERT INTO transacoes (data_hora, simbolo, tipo, quantidade, preco, valor_total, taxa)
                 VALUES (?, ?, ?, ?, ?, ?)
             """,
                 (data_hora, simbolo, tipo, quantidade, preco, valor_total),
