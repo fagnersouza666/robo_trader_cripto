@@ -145,7 +145,7 @@ class TradeExecutor:
             logger.error(
                 f"Saldo insuficiente para executar a ordem. Notional ({notional}) é menor que o mínimo permitido ({min_notional})."
             )
-            return 0.0, 0.0
+            return None
 
         # Aqui você já retorna a string correta para a Binance
         if ordem_tipo == "buy":
@@ -168,7 +168,7 @@ class TradeExecutor:
 
         else:
             logger.error(f"Tipo de ordem inválido: {ordem_tipo}")
-            return 0.0, 0.0
+            return None
 
     def _executar_ordem_buy(
         self,
@@ -207,7 +207,7 @@ class TradeExecutor:
         except BinanceAPIException as e:
             logger.error(f"Erro ao executar ordem de compra: {e}")
             traceback.print_exc()
-            return 0.0, 0.0
+            return None
 
     def _executar_ordem_sell(
         self,
@@ -236,14 +236,12 @@ class TradeExecutor:
 
             if taxa is None:
                 taxa = 0.0
-            if preco_venda is None:
-                preco_venda = 0.0
 
             return preco_venda, taxa
 
         except BinanceAPIException as e:
             logger.error(f"Erro ao executar ordem de venda: {e}")
-            return 0.0, 0.0
+            return None
 
     def _configurar_stop_loss_take_profit(
         self,
