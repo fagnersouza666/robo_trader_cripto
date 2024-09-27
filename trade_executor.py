@@ -95,13 +95,15 @@ class TradeExecutor:
             )
 
             # Forçar a quantidade ajustada para garantir que o notional seja maior que o mínimo
-            quantidade_ajustada = min_notional / preco_atual
+            quantidade_ajustada = (
+                min_notional / preco_atual
+            ) * 1.2  # Adiciona uma margem de 20%
             quantidade_ajustada_str = self._ajustar_quantidade(
                 quantidade_ajustada, lot_size["step_size"]
             )
 
             # Recalcular o notional após o ajuste de quantidade
-            notional = preco_atual * float(quantidade_ajustada_str) * 1.2
+            notional = preco_atual * float(quantidade_ajustada_str)
 
             if notional < min_notional:
                 logger.error(
@@ -124,7 +126,7 @@ class TradeExecutor:
         # Se o notional ajustado for maior que o saldo disponível, ajuste a quantidade novamente
         if notional > saldo_disponivel:
             # Ajustar a quantidade com base no saldo disponível
-            quantidade_ajustada = saldo_disponivel / preco_atual
+            quantidade_ajustada = saldo_disponivel / preco_atual * 1.001
             quantidade_ajustada_str = self._ajustar_quantidade(
                 quantidade_ajustada, lot_size["step_size"]
             )
