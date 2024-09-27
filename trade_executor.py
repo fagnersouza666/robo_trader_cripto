@@ -84,9 +84,7 @@ class TradeExecutor:
 
         # Calcula o valor da ordem (preço * quantidade)
         preco_atual = float(self.client.get_symbol_ticker(symbol=symbol)["price"])
-        quantidade_ajustada = float(
-            quantidade_ajustada_str
-        )  # Certifique-se de que a quantidade seja um float para cálculo
+        quantidade_ajustada = float(quantidade_ajustada_str)
         notional = preco_atual * quantidade_ajustada
 
         # Verifica se o valor (notional) está acima do mínimo exigido
@@ -129,6 +127,7 @@ class TradeExecutor:
 
         saldo_disponivel = self.verificar_saldo(symbol)
 
+        # Se o notional ajustado for maior que o saldo disponível, ajuste a quantidade novamente
         if notional > saldo_disponivel:
             # Ajustar a quantidade com base no saldo disponível
             quantidade_ajustada = saldo_disponivel / preco_atual
@@ -140,6 +139,13 @@ class TradeExecutor:
             logger.info(
                 f"Quantidade ajustada para o saldo disponível: {quantidade_ajustada_str}, Notional: {notional}"
             )
+
+        # Verificar se o notional após o ajuste ainda é inferior ao mínimo permitido
+        if notional < min_notional:
+            logger.error(
+                f"Saldo insuficiente para executar a ordem. Notional ({notional}) é menor que o mínimo permitido ({min_notional})."
+            )
+            return None  # Interrompa a execução da ordem
 
         # Aqui você já retorna a string correta para a Binance
         if ordem_tipo == "buy":
