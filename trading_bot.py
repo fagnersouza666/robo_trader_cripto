@@ -191,22 +191,20 @@ class TradingBot:
                     continue  # Pula para o próximo símbolo se stake for None
 
                 if acao == "Comprar":
-                    preco_compra, taxa = self.trade_executor.executar_ordem(
+                    resultado = self.trade_executor.executar_ordem(
                         key, stake, "buy", 1.0, 2.0
                     )
 
-                    logger.info(
-                        f"Preco Compra: {preco_compra}, Taxa: {taxa} para {key}"
-                    )
+                    if resultado is None:
+                        logger.error(f"Falha ao executar a ordem para {key}.")
+                    else:
+                        preco_compra, taxa = resultado
+                        logger.info(f"Preço de compra: {preco_compra}, Taxa: {taxa}")
 
-                    if preco_compra is None:
-                        logger.error(f"Compra falhou para {key}.")
-                        continue
-
-                    valor_total = float(stake) * preco_compra
-                    self.registrar_e_notificar_operacao(
-                        key, "COMPRA", float(stake), preco_compra, valor_total, taxa
-                    )
+                        valor_total = float(stake) * preco_compra
+                        self.registrar_e_notificar_operacao(
+                            key, "COMPRA", float(stake), preco_compra, valor_total, taxa
+                        )
                 elif acao == "Vender":
                     # Obter preço médio e quantidade total de compras
                     preco_medio_compra, quantidade_total, taxas_total_compras = (
@@ -215,13 +213,20 @@ class TradingBot:
 
                     if quantidade_total != 0:
                         # Executar a venda de toda a quantidade acumulada
-                        preco_venda_real, taxa = self.trade_executor.executar_ordem(
+                        resultado = self.trade_executor.executar_ordem(
                             key, quantidade_total, "sell"
                         )
 
-                        if preco_venda_real is None:
-                            logger.error(f"Venda falhou para {key}.")
-                            continue
+                    if resultado is None:
+                        logger.error(f"Falha ao executar a ordem para {key}.")
+                    else:
+                        preco_venda_real, taxa = resultado
+                        logger.info(f"Preço de compra: {preco_compra}, Taxa: {taxa}")
+
+                        valor_total = float(stake) * preco_compra
+                        self.registrar_e_notificar_operacao(
+                            key, "VENDA", float(stake), preco_compra, valor_total, taxa
+                        )
 
                         valor_total_vendas = quantidade_total * preco_venda_real
                         valor_total_compras = quantidade_total * preco_medio_compra
