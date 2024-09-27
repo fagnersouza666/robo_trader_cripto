@@ -103,15 +103,10 @@ class TradeExecutor:
             notional = preco_atual * float(quantidade_ajustada_str)
 
             if notional < min_notional:
-                # Aumenta mais a quantidade até que o notional esteja acima do mínimo
-                quantidade_ajustada = (min_notional * 1.05) / preco_atual
-                quantidade_ajustada_str = self._ajustar_quantidade(
-                    quantidade_ajustada, lot_size["step_size"]
+                logger.error(
+                    f"Mesmo após ajuste, o valor ({notional}) é menor que o mínimo exigido ({min_notional}) para {symbol}."
                 )
-
-            logger.info(
-                f"Quantidade ajustada para {quantidade_ajustada_str} para atingir o valor mínimo."
-            )
+                return None
 
         # Verifique se a quantidade ajustada está acima de minQty
         if float(quantidade_ajustada_str) < lot_size["min_qty"]:
@@ -123,9 +118,7 @@ class TradeExecutor:
                 f"Quantidade ajustada para o mínimo de lote permitido: {quantidade_ajustada_str}"
             )
 
-        print(f"Quantidade ajustada: {quantidade_ajustada_str}")
-
-        saldo_disponivel = self.verificar_saldo(symbol)
+        saldo_disponivel = self.verificar_saldo("USDT")
 
         # Se o notional ajustado for maior que o saldo disponível, ajuste a quantidade novamente
         if notional > saldo_disponivel:
@@ -147,7 +140,7 @@ class TradeExecutor:
             )
             return None
 
-        # Aqui você já retorna a string correta para a Binance
+        # Execução da ordem após as verificações
         if ordem_tipo == "buy":
             resultado = self._executar_ordem_buy(
                 symbol, quantidade_ajustada_str, stop_loss_percent, take_profit_percent
@@ -162,7 +155,7 @@ class TradeExecutor:
                 symbol, quantidade_ajustada_str, stop_loss_percent, take_profit_percent
             )
 
-            logger.info(f"Resultado da execução da ordem de venda: {resultado}")
+            logger.info(f"Resultado da execução da ordem de venda: {retorno}")
 
             return retorno
 
