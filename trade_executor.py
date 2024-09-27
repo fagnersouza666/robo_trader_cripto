@@ -100,7 +100,7 @@ class TradeExecutor:
             )
 
             # Recalcular o notional após o ajuste de quantidade
-            notional = preco_atual * float(quantidade_ajustada_str)
+            notional = preco_atual * float(quantidade_ajustada_str) * 1.1
 
             if notional < min_notional:
                 logger.error(
