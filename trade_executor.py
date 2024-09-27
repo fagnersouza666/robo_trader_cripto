@@ -49,6 +49,7 @@ class TradeExecutor:
         quantidade = float(quantidade)
         step_size = float(step_size)
 
+        print(f"Quantidade: {quantidade} | Step Size: {step_size}")
         # Calcula a quantidade ajustada
         quantidade_ajustada = round(quantidade - (quantidade % step_size), 8)
 
