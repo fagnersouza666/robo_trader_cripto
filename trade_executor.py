@@ -185,11 +185,17 @@ class TradeExecutor:
 
         elif ordem_tipo == "sell":
 
+            preco_atual = float(self.client.get_symbol_ticker(symbol=symbol)["price"])
+
             # Se for uma venda parcial, ajusta a quantidade para 50%
             if venda_parcial:
                 quantidade = quantidade * 0.5
 
             saldo_disponivel = self.verificar_saldo(moeda_venda)
+            quantidade_maxima = saldo_disponivel * preco_atual
+
+            if quantidade > quantidade_maxima:
+                quantidade = quantidade_maxima
 
             quantidade = self._ajustar_quantidade_venda(symbol, quantidade)
 
