@@ -195,6 +195,10 @@ class TradeExecutor:
             quantidade_maxima = saldo_disponivel / preco_atual
 
             logging.info(
+                f"saldo_disponivel: {saldo_disponivel} | preco_atual: {preco_atual}"
+            )
+
+            logging.info(
                 f"qunatidade: {quantidade} | quantidade_maxima: {quantidade_maxima}"
             )
 
