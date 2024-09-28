@@ -286,7 +286,7 @@ class TradingBot:
 
             except Exception as e:
                 traceback.print_exc()
-                logger.error(f"Erro inesperado no símbolo {key}: {e}")
+                logger.error(f"Erro inesperado no símbolo  {key}: {e}")
 
     def calcular_preco_medio_e_quantidade(self, symbol):
         """

@@ -19,7 +19,7 @@ class TradeExecutor:
         for s in exchange_info["symbols"]:
             if s["symbol"] == symbol:
                 for f in s["filters"]:
-                    print(f)
+
                     if f["filterType"] == "LOT_SIZE":
                         lot_size = {
                             "min_qty": float(f["minQty"]),
@@ -80,7 +80,6 @@ class TradeExecutor:
         quantidade = float(quantidade)
         step_size = float(step_size)
 
-        print(f"Quantidade: {quantidade} | Step Size: {step_size}")
         # Calcula a quantidade ajustada
         quantidade_ajustada = round(quantidade - (quantidade % step_size), 8)
 
@@ -225,12 +224,7 @@ class TradeExecutor:
             preco_compra = float(ordem_compra["fills"][0]["price"])
             taxaM = float(ordem_compra["fills"][0]["commission"])
 
-            print(f" Preco Compra: {preco_compra} | Taxa: {taxaM}")
-
             taxa = taxaM * preco_compra
-
-            print(f"taxa: {taxa} | taxaM: {taxaM} | preco_compra: {preco_compra}")
-
             # Configura stop loss e take profit
             self._configurar_stop_loss_take_profit(
                 symbol, quantidade, preco_compra, stop_loss_percent, take_profit_percent
@@ -251,6 +245,11 @@ class TradeExecutor:
         take_profit_percent: float,
     ):
         try:
+
+            logging.info(
+                f"Executando ordem de venda para {symbol} com quantidade {quantidade}"
+            )
+
             # Executa a ordem de venda no mercado
             ordem_venda = self.client.order_market_sell(
                 symbol=symbol, quantity=quantidade
