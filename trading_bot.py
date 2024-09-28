@@ -344,6 +344,7 @@ class TradingBot:
             return quantidade_final, preco_medio, 0
 
         except Exception as e:
+            traceback.print_exc()
             logger.error(
                 f"Erro ao calcular preço médio e quantidade para {symbol}: {e}"
             )
