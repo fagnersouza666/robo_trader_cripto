@@ -91,6 +91,7 @@ class TradeExecutor:
         return quantidade_ajustada_str
 
     def verificar_saldo(self, symbol="USDT"):
+        logging.info(f"Verificando saldo disponível em {symbol}...")
         saldo_base = self.client.get_asset_balance(asset=symbol)
         saldo_disponivel = float(saldo_base["free"])
 
