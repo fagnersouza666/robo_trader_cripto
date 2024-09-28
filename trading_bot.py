@@ -192,7 +192,7 @@ class TradingBot:
 
                 if acao == "Comprar":
                     resultado = self.trade_executor.executar_ordem(
-                        key, stake, "buy", 1.0, 2.0
+                        key, stake, "buy", False
                     )
 
                     if resultado is None:
@@ -211,7 +211,7 @@ class TradingBot:
                             taxa,
                             0,
                         )
-                elif acao == "Vender":
+                elif acao == "Vender" or acao == "VenderParcial":
                     # Obter preço médio e quantidade total de compras
                     preco_medio_compra, quantidade_total, taxas_total_compras = (
                         self.calcular_preco_medio_e_quantidade(key)
@@ -220,7 +220,7 @@ class TradingBot:
                     if quantidade_total != 0:
                         # Executar a venda de toda a quantidade acumulada
                         resultado = self.trade_executor.executar_ordem(
-                            key, quantidade_total, "sell"
+                            key, quantidade_total, "sell", "VenderParcial" == acao
                         )
 
                         if resultado is None:
@@ -326,17 +326,26 @@ class TradingBot:
             volume_atual = df["Volume"].iloc[-1]
             volume_medio = df["Volume"].mean()
 
-            # Critério 1: Divergência de RSI (preço sobe, mas RSI cai)
-            if ultimo_preco > preco_anterior and rsi < rsi_anterior:
-                return "Vender", ultimo_preco
+            # Venda parcial se RSI estiver sobrecomprado e volume acima da média
+            if rsi > 70 and volume_atual > volume_medio * 1.2:
+                logging.info(
+                    f"Venda parcial se RSI estiver sobrecomprado e volume acima da média. - moeda: {symbol} - ultimo preco: {ultimo_preco}"
+                )
+                return "VenderParcial", ultimo_preco
 
-            # Critério 2: Preço tocou a banda superior de Bollinger e Momentum está caindo
-            if ultimo_preco > bb_upper and momentum < 0:
-                return "Vender", ultimo_preco
+            # Venda total se RSI mostrar divergência negativa e momentum cair
+            if rsi < df["RSI"].iloc[-2] and momentum < 0:
+                logging.info(
+                    f"Venda total se RSI mostrar divergência negativa e momentum cair. - moeda: {symbol} - ultimo preco: {ultimo_preco}"
+                )
+                return "VenderTotal", ultimo_preco
 
-            # Critério 3: Volume de venda maior que a média e RSI sobrecomprado (> 70)
-            if rsi > 70 and volume_atual > volume_medio * 1.5:
-                return "Vender", ultimo_preco
+            # Venda se o preço tocar a banda superior de Bollinger
+            if ultimo_preco > bb_upper:
+                logging.info(
+                    f"Venda se o preço tocar a banda superior de Bollinger. - moeda: {symbol} - ultimo preco: {ultimo_preco}"
+                )
+                return "VenderTotal", ultimo_preco
 
             return "Esperar", 0.0
 

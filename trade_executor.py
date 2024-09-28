@@ -72,11 +72,15 @@ class TradeExecutor:
         symbol: str,
         quantidade: float,
         ordem_tipo: str,
-        stop_loss_percent: float,
-        take_profit_percent: float,
+        venda_parcial: bool = False,
     ):
+
         # Obtém as restrições de LOT_SIZE e MIN_NOTIONAL para o par
         lot_size, min_notional = self._get_lot_size_and_min_notional(symbol)
+
+        # Se for uma venda parcial, ajusta a quantidade para 50%
+        if venda_parcial:
+            quantidade = quantidade * 0.5
 
         # Verifica e ajusta a quantidade de acordo com o step_size
         quantidade_ajustada_str = self._ajustar_quantidade(
