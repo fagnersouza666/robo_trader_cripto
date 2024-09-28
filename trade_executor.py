@@ -160,6 +160,8 @@ class TradeExecutor:
                     quantidade_ajustada, lot_size["step_size"]
                 )
 
+                quantidade_ajustada_str = "{:f}".format(quantidade_ajustada)
+
                 # Recalcular o notional após o ajuste de quantidade
                 notional = preco_atual * float(quantidade_ajustada_str)
 
@@ -242,6 +244,7 @@ class TradeExecutor:
         take_profit_percent: float,
     ):
         try:
+
             print(
                 f"Executando ordem de compra para {symbol} com quantidade {quantidade}"
             )
