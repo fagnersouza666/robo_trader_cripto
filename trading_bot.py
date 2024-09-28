@@ -146,17 +146,6 @@ class TradingBot:
                     f"Quantidade ajustada '{quantidade_ajustada_str}' não está no formato correto."
                 )
 
-            # Logging para depuração
-            logging.debug(f"Symbol: {symbol}")
-            logging.debug(f"Quantidade Inicial: {quantidade}")
-            logging.debug(f"Preço Ativo: {preco_ativo}")
-            logging.debug(f"Min Qty: {min_qty}")
-            logging.debug(f"Max Qty: {max_qty}")
-            logging.debug(f"Step Size: {step_size}")
-            logging.debug(f"Min Notional: {min_notional}")
-            logging.debug(f"Min Quantity: {min_quantity}")
-            logging.debug(f"Quantidade Ajustada: {quantidade_ajustada_str}")
-
             return quantidade_ajustada_str
 
         except Exception as e:
@@ -371,23 +360,14 @@ class TradingBot:
 
             # Venda parcial se RSI estiver sobrecomprado e volume acima da média
             if rsi > 70 and volume_atual > volume_medio * 1.2:
-                logging.info(
-                    f"Venda parcial se RSI estiver sobrecomprado e volume acima da média. - moeda: {symbol} - ultimo preco: {ultimo_preco}"
-                )
                 return "VenderParcial", ultimo_preco
 
             # Venda total se RSI mostrar divergência negativa e momentum cair
             if rsi < df["RSI"].iloc[-2] and momentum < 0:
-                logging.info(
-                    f"Venda total se RSI mostrar divergência negativa e momentum cair. - moeda: {symbol} - ultimo preco: {ultimo_preco}"
-                )
                 return "VenderTotal", ultimo_preco
 
             # Venda se o preço tocar a banda superior de Bollinger
             if ultimo_preco > bb_upper:
-                logging.info(
-                    f"Venda se o preço tocar a banda superior de Bollinger. - moeda: {symbol} - ultimo preco: {ultimo_preco}"
-                )
                 return "VenderTotal", ultimo_preco
 
             return "Esperar", 0.0
