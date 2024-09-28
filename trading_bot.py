@@ -191,6 +191,7 @@ class TradingBot:
                     continue  # Pula para o próximo símbolo se stake for None
 
                 if acao == "Comprar":
+                    logging.info("Comprar")
                     resultado = self.trade_executor.executar_ordem(
                         key, stake, "buy", False
                     )
@@ -212,6 +213,8 @@ class TradingBot:
                             0,
                         )
                 elif acao == "Vender" or acao == "VenderParcial":
+                    logging.info(f"{acao}")
+
                     # Obter preço médio e quantidade total de compras
                     preco_medio_compra, quantidade_total, taxas_total_compras = (
                         self.calcular_preco_medio_e_quantidade(key)
@@ -224,7 +227,9 @@ class TradingBot:
                         )
 
                         if resultado is None:
-                            logger.error(f"Falha ao executar a ordem para {key}.")
+                            logger.error(
+                                f"Falha ao executar a ordem de venda para {key}."
+                            )
                         else:
                             preco_venda_real, taxa = resultado
                             logger.info(
@@ -292,23 +297,57 @@ class TradingBot:
 
     def calcular_preco_medio_e_quantidade(self, symbol):
         """
-        Calcula o preço médio de compra e a quantidade total acumulada para uma moeda.
+        Calcula o preço médio de compra e a quantidade total acumulada para uma moeda,
+        considerando todas as compras e subtraindo as vendas. Define a taxa como 0.
         """
-        transacoes = self.database_manager.obter_transacoes(symbol, tipo="COMPRA")
-        valor_total_compras = 0
-        quantidade_total = 0
-        taxas_total = 0
+        try:
+            # Obtém o histórico de ordens de compra e venda do símbolo fornecido
+            ordens = self.client.get_all_orders(
+                symbol=symbol, limit=100
+            )  # Ajuste o limite conforme necessário
 
-        for transacao in transacoes:
-            quantidade_total += transacao["quantidade"]
-            valor_total_compras += transacao["quantidade"] * transacao["preco"]
-            taxas_total += transacao["taxa"]
+            valor_total_compras = 0
+            quantidade_total_comprada = 0
+            quantidade_total_vendida = 0
+            taxas_total = 0  # A taxa será fixada como 0, conforme solicitado.
 
-        if quantidade_total == 0:
-            return 0, 0, 0  # Sem compras registradas
+            for ordem in ordens:
+                # Considera apenas ordens preenchidas
+                if ordem["status"] == "FILLED":
+                    quantidade = float(ordem["executedQty"])
 
-        preco_medio = valor_total_compras / quantidade_total
-        return preco_medio, quantidade_total, taxas_total
+                    if ordem["side"] == "BUY":
+                        preco = float(ordem["price"])
+                        # Atualiza o valor total de compras e a quantidade total comprada
+                        quantidade_total_comprada += quantidade
+                        valor_total_compras += quantidade * preco
+
+                    elif ordem["side"] == "SELL":
+                        # Atualiza a quantidade total vendida
+                        quantidade_total_vendida += quantidade
+
+            # Se não houver compras registradas
+            if quantidade_total_comprada == 0:
+                return 0, 0, 0
+
+            # Calcula o saldo final (quantidade comprada - quantidade vendida)
+            quantidade_final = quantidade_total_comprada - quantidade_total_vendida
+
+            # Se o saldo for zero ou negativo, significa que todas as moedas foram vendidas
+            if quantidade_final <= 0:
+                return 0, 0, 0
+
+            # Calcula o preço médio apenas das compras
+            preco_medio = valor_total_compras / quantidade_total_comprada
+
+            # Retorna a quantidade final, preço médio e taxa (0)
+            return quantidade_final, preco_medio, 0
+
+        except Exception as e:
+            logger.error(
+                f"Erro ao calcular preço médio e quantidade para {symbol}: {e}"
+            )
+            return 0, 0, 0
 
     def estrategia_venda_reversao(self, df, symbol):
         """

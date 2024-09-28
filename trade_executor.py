@@ -149,18 +149,14 @@ class TradeExecutor:
 
         # Execução da ordem após as verificações
         if ordem_tipo == "buy":
-            resultado = self._executar_ordem_buy(
-                symbol, quantidade_ajustada_str, stop_loss_percent, take_profit_percent
-            )
+            resultado = self._executar_ordem_buy(symbol, quantidade_ajustada_str, 2, 4)
 
             logger.info(f"Resultado da execução da ordem de compra: {resultado}")
 
             return resultado
 
         elif ordem_tipo == "sell":
-            retorno = self._executar_ordem_sell(
-                symbol, quantidade_ajustada_str, stop_loss_percent, take_profit_percent
-            )
+            retorno = self._executar_ordem_sell(symbol, quantidade, 0, 0)
 
             logger.info(f"Resultado da execução da ordem de venda: {retorno}")
 
