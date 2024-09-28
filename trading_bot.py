@@ -6,7 +6,7 @@ from sentiment_analyzer import SentimentAnalyzer
 from trade_executor import TradeExecutor
 from database_manager import DatabaseManager
 from telegram_notifier import TelegramNotifier
-import datetime
+from datetime import datetime
 import os
 import math
 from decimal import Decimal, ROUND_DOWN, ROUND_UP
@@ -298,8 +298,8 @@ class TradingBot:
         considerando todas as compras e subtraindo as vendas. Define a taxa como 0.
         """
         try:
-            # Converter a data de 01/09/2024 para timestamp em milissegundos
-            data_inicio = int(datetime(2024, 9, 1).timestamp() * 1000)
+
+            data_inicio = self.converter_data_para_timestamp(2024, 9, 1)
 
             # Obtém o histórico de ordens de compra e venda do símbolo fornecido a partir da data especificada
             ordens = self.client.get_all_orders(
@@ -349,6 +349,9 @@ class TradingBot:
                 f"Erro ao calcular preço médio e quantidade para {symbol}: {e}"
             )
             return 0, 0, 0
+
+    def converter_data_para_timestamp(self, ano, mes, dia):
+        return int(datetime(ano, mes, dia).timestamp() * 1000)
 
     def estrategia_venda_reversao(self, df, symbol):
         """
@@ -542,3 +545,12 @@ class TradingBot:
         logger.info(
             f"{tipo_operacao} de {quantidade} {symbol} a {preco} USDT (Total: {valor_total} USDT)"
         )
+
+    def obter_historico_ordens(self, simbolo, ano, mes, dia):
+        data_inicio = self.converter_data_para_timestamp(ano, mes, dia)
+        return self.client.get_all_orders(symbol=simbolo, startTime=data_inicio)
+
+    def algum_outro_metodo(self):
+        # ... código existente ...
+        historico_ordens = self.obter_historico_ordens("BTCUSDT", 2024, 9, 1)
+        # ... resto do código ...
