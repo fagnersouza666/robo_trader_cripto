@@ -44,6 +44,37 @@ class TradeExecutor:
             f"Não foi possível encontrar informações para o símbolo: {symbol}"
         )
 
+    def _ajustar_quantidade_venda(self, symbol: str, quantidade: float):
+        """
+        Ajusta a quantidade para atender ao step size do símbolo.
+        """
+        try:
+            # Obtém as informações de trading do símbolo
+            info = self.client.get_symbol_info(symbol)
+            if not info:
+                raise ValueError(f"Informações do símbolo {symbol} não encontradas.")
+
+            # Obtém o filtro de tamanho de lote (LOT_SIZE)
+            filters = {f["filterType"]: f for f in info["filters"]}
+            lot_size = filters.get("LOT_SIZE")
+
+            if not lot_size:
+                raise ValueError(
+                    f"Filtro LOT_SIZE não encontrado para o símbolo {symbol}."
+                )
+
+            # Step size
+            step_size = float(lot_size["stepSize"])
+
+            # Ajuste a quantidade com base no step size
+            quantidade_ajustada = round(quantidade // step_size * step_size, 8)
+
+            return quantidade_ajustada
+
+        except Exception as e:
+            logger.error(f"Erro ao ajustar quantidade para {symbol}: {e}")
+            return 0
+
     def _ajustar_quantidade(self, quantidade: float, step_size: float):
         """Ajusta a quantidade para o incremento permitido pelo filtro."""
         quantidade = float(quantidade)
@@ -157,6 +188,8 @@ class TradeExecutor:
             # Se for uma venda parcial, ajusta a quantidade para 50%
             if venda_parcial:
                 quantidade = quantidade * 0.5
+
+            quantidade = self._ajustar_quantidade_venda(symbol, quantidade)
 
             retorno = self._executar_ordem_sell(symbol, quantidade, 0, 0)
 
