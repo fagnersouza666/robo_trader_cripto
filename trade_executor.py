@@ -98,6 +98,27 @@ class TradeExecutor:
         logger.info(f"Saldo disponível em USDT: {saldo_disponivel}")
         return saldo_disponivel
 
+    def verificar_saldo_moedas(self, symbol):
+        try:
+            logging.info(f"Verificando saldo disponível em {symbol}...")
+
+            # Obtém todas as informações da conta, incluindo saldos de todos os ativos
+            conta = self.client.get_account()
+
+            # Filtra a lista de saldos para encontrar o ativo específico (symbol)
+            for asset in conta["balances"]:
+                if asset["asset"] == symbol:
+                    saldo_disponivel = float(asset["free"])
+                    logger.info(f"Saldo disponível em {symbol}: {saldo_disponivel}")
+                    return saldo_disponivel
+
+            logger.error(f"Ativo {symbol} não encontrado na conta.")
+            return 0
+
+        except Exception as e:
+            logger.error(f"Erro ao verificar saldo de {symbol}: {e}")
+            return 0
+
     def executar_ordem(
         self,
         symbol: str,
@@ -192,7 +213,7 @@ class TradeExecutor:
             if venda_parcial:
                 quantidade = quantidade * 0.5
 
-            saldo_disponivel = self.verificar_saldo(moeda_venda)
+            saldo_disponivel = self.verificar_saldo_moedas(moeda_venda)
             quantidade_maxima = saldo_disponivel / preco_atual
 
             logging.info(
