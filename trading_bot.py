@@ -223,7 +223,11 @@ class TradingBot:
                     if quantidade_total != 0:
                         # Executar a venda de toda a quantidade acumulada
                         resultado = self.trade_executor.executar_ordem(
-                            key, quantidade_total, "sell", "VenderParcial" == acao
+                            key,
+                            quantidade_total,
+                            "sell",
+                            "VenderParcial" == acao,
+                            value,
                         )
 
                         if resultado is None:

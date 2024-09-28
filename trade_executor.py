@@ -104,6 +104,7 @@ class TradeExecutor:
         quantidade: float,
         ordem_tipo: str,
         venda_parcial: bool = False,
+        moeda_venda: str = None,
     ):
 
         # Obtém as restrições de LOT_SIZE e MIN_NOTIONAL para o par
@@ -189,9 +190,11 @@ class TradeExecutor:
             if venda_parcial:
                 quantidade = quantidade * 0.5
 
+            saldo_disponivel = self.verificar_saldo(moeda_venda)
+
             quantidade = self._ajustar_quantidade_venda(symbol, quantidade)
 
-            retorno = self._executar_ordem_sell(symbol, quantidade, 0, 0)
+            retorno = self._executar_ordem_sell(moeda_venda, quantidade, 0, 0)
 
             logger.info(f"Resultado da execução da ordem de venda: {retorno}")
 
@@ -259,11 +262,6 @@ class TradeExecutor:
 
             taxaM = float(preco_venda["fills"][0]["commission"])
             taxa = taxaM * preco_venda
-
-            # Configura stop loss e take profit
-            self._configurar_stop_loss_take_profit(
-                symbol, quantidade, preco_venda, stop_loss_percent, take_profit_percent
-            )
 
             if taxa is None:
                 taxa = 0.0
