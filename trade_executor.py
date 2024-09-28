@@ -156,11 +156,11 @@ class TradeExecutor:
                 quantidade_ajustada = (
                     min_notional / preco_atual
                 ) * 1.2  # Adiciona uma margem de 20%
-                quantidade_ajustada_str = self._ajustar_quantidade(
-                    quantidade_ajustada, lot_size["step_size"]
-                )
 
                 quantidade_ajustada_str = "{:f}".format(quantidade_ajustada)
+                quantidade_ajustada_str = self._ajustar_quantidade(
+                    quantidade_ajustada_str, lot_size["step_size"]
+                )
 
                 # Recalcular o notional após o ajuste de quantidade
                 notional = preco_atual * float(quantidade_ajustada_str)
