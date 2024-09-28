@@ -28,7 +28,8 @@ class DatabaseManager:
                     quantidade REAL,
                     preco REAL,
                     valor_total REAL,
-                    taxa REAL
+                    taxa REAL,
+                    vendido INTEGER DEFAULT 0
                 )
             """
             )
@@ -73,14 +74,24 @@ class DatabaseManager:
         preco: float,
         valor_total: float,
         taxa: float,
+        vendido,
     ):
         with self.conn:
             self.cursor.execute(
                 """
-                INSERT INTO transacoes (data_hora, simbolo, tipo, quantidade, preco, valor_total, taxa)
-                VALUES (?, ?, ?, ?, ?, ?,?)
+                INSERT INTO transacoes (data_hora, simbolo, tipo, quantidade, preco, valor_total, taxa, vendido)
+                VALUES (?, ?, ?, ?, ?, ?,?,?)
             """,
-                (data_hora, simbolo, tipo, quantidade, preco, valor_total, taxa),
+                (
+                    data_hora,
+                    simbolo,
+                    tipo,
+                    quantidade,
+                    preco,
+                    valor_total,
+                    taxa,
+                    vendido,
+                ),
             )
             logger.info(
                 f"Transação registrada: {tipo} de {quantidade} {simbolo} a {preco} USDT"
@@ -142,7 +153,7 @@ class DatabaseManager:
         Obtém todas as transações de um símbolo específico.
         O tipo de transação pode ser "COMPRA" ou "VENDA", se fornecido.
         """
-        query = "SELECT * FROM transacoes WHERE simbolo = ?"
+        query = "SELECT * FROM transacoes WHERE simbolo = ? AND vendido = 0"
         params = [simbolo]
 
         if tipo:
