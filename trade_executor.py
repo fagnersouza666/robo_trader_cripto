@@ -192,7 +192,7 @@ class TradeExecutor:
                 quantidade = quantidade * 0.5
 
             saldo_disponivel = self.verificar_saldo(moeda_venda)
-            quantidade_maxima = saldo_disponivel * preco_atual
+            quantidade_maxima = saldo_disponivel / preco_atual
 
             if quantidade > quantidade_maxima:
                 quantidade = quantidade_maxima
