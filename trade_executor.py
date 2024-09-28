@@ -194,7 +194,7 @@ class TradeExecutor:
 
             quantidade = self._ajustar_quantidade_venda(symbol, quantidade)
 
-            retorno = self._executar_ordem_sell(moeda_venda, quantidade, 0, 0)
+            retorno = self._executar_ordem_sell(symbol, quantidade, 0, 0)
 
             logger.info(f"Resultado da execução da ordem de venda: {retorno}")
 
