@@ -221,6 +221,9 @@ class TradeExecutor:
 
             quantidade_maxima = self.verificar_saldo_moedas(moeda_venda)
 
+            if quantidade_maxima == 0:
+                quantidade_maxima = quantidade
+
             if quantidade > quantidade_maxima:
                 quantidade = quantidade_maxima
 
