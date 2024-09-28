@@ -213,16 +213,7 @@ class TradeExecutor:
             if venda_parcial:
                 quantidade = quantidade * 0.5
 
-            saldo_disponivel = self.verificar_saldo_moedas(moeda_venda)
-            quantidade_maxima = saldo_disponivel / preco_atual
-
-            logging.info(
-                f"saldo_disponivel: {saldo_disponivel} | preco_atual: {preco_atual}"
-            )
-
-            logging.info(
-                f"qunatidade: {quantidade} | quantidade_maxima: {quantidade_maxima}"
-            )
+            quantidade_maxima = self.verificar_saldo_moedas(moeda_venda)
 
             if quantidade > quantidade_maxima:
                 quantidade = quantidade_maxima
