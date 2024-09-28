@@ -209,6 +209,10 @@ class TradingBot:
                         self.calcular_preco_medio_e_quantidade(key)
                     )
 
+                    logging.info(
+                        f"Preço médio de compra: {preco_medio_compra}, Quantidade total: {quantidade_total}, Taxas totais: {taxas_total_compras}, moeda: {key}"
+                    )
+
                     if quantidade_total != 0:
                         # Executar a venda de toda a quantidade acumulada
                         resultado = self.trade_executor.executar_ordem(
