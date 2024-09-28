@@ -49,6 +49,8 @@ class TradeExecutor:
         Ajusta a quantidade para atender ao step size do símbolo.
         """
         try:
+            logging.info(f"quantidade antes: {quantidade}")
+
             # Obtém as informações de trading do símbolo
             info = self.client.get_symbol_info(symbol)
             if not info:
@@ -68,6 +70,8 @@ class TradeExecutor:
 
             # Ajuste a quantidade com base no step size
             quantidade_ajustada = round(quantidade // step_size * step_size, 8)
+
+            logging.info(f"quantidade ajustada: {quantidade_ajustada}")
 
             return quantidade_ajustada
 
