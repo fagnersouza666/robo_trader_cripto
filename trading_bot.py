@@ -278,9 +278,7 @@ class TradingBot:
                             ) * 100
 
                             # Registrar no banco de dados
-                            data_hora = datetime.datetime.now().strftime(
-                                "%Y-%m-%d %H:%M:%S"
-                            )
+                            data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             self.database_manager.registrar_ganhos(
                                 data_hora,
                                 key,
@@ -540,7 +538,7 @@ class TradingBot:
         quantidade = f"{quantidade:.8f}"
 
         # Registrar a operação no banco de dados
-        data_hora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.database_manager.registrar_transacao(
             data_hora=data_hora,
             simbolo=symbol,
