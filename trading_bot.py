@@ -62,6 +62,26 @@ class TradingBot:
 
         return self.ajustar_quantidade(symbol, stake_quantidade, preco_ativo)
 
+    def calcular_preco_medio_e_quantidade_banco(self, symbol):
+        """
+        Calcula o preço médio de compra e a quantidade total acumulada para uma moeda.
+        """
+        transacoes = self.database_manager.obter_transacoes(symbol, tipo="COMPRA")
+        valor_total_compras = 0
+        quantidade_total = 0
+        taxas_total = 0
+
+        for transacao in transacoes:
+            quantidade_total += transacao["quantidade"]
+            valor_total_compras += transacao["quantidade"] * transacao["preco"]
+            taxas_total += transacao["taxa"]
+
+        if quantidade_total == 0:
+            return 0, 0, 0  # Sem compras registradas
+
+        preco_medio = valor_total_compras / quantidade_total
+        return preco_medio, quantidade_total, taxas_total
+
     def ajustar_quantidade(
         self, symbol: str, quantidade: float, preco_ativo: float
     ) -> float:
@@ -206,7 +226,7 @@ class TradingBot:
 
                     # Obter preço médio e quantidade total de compras
                     preco_medio_compra, quantidade_total, taxas_total_compras = (
-                        self.calcular_preco_medio_e_quantidade(key)
+                        self.calcular_preco_medio_e_quantidade_banco(key)
                     )
 
                     logging.info(
