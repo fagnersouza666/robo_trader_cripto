@@ -298,10 +298,13 @@ class TradingBot:
         considerando todas as compras e subtraindo as vendas. Define a taxa como 0.
         """
         try:
-            # Obtém o histórico de ordens de compra e venda do símbolo fornecido
+            # Converter a data de 01/09/2024 para timestamp em milissegundos
+            data_inicio = int(datetime(2024, 9, 1).timestamp() * 1000)
+
+            # Obtém o histórico de ordens de compra e venda do símbolo fornecido a partir da data especificada
             ordens = self.client.get_all_orders(
-                symbol=symbol, limit=100
-            )  # Ajuste o limite conforme necessário
+                symbol=symbol, limit=1000, startTime=data_inicio
+            )
 
             valor_total_compras = 0
             quantidade_total_comprada = 0
