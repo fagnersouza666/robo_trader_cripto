@@ -323,9 +323,11 @@ class TradingBot:
 
             # Obter o valor mínimo de notional da lista manual ou usar o valor padrão
             min_notional = self.min_notional.get(symbol, min_notional_padrao)
+            logging.info(f"Valor notional mínimo para {symbol}: {min_notional}")
 
             # Calcula o valor notional atual com a quantidade fornecida
             notional = preco_atual * quantidade
+            logging.info(f"2 - Valor notional atual para {symbol}: {notional}")
 
             # Se o notional for menor que o permitido, ajustar a quantidade
             if notional < min_notional:
@@ -336,6 +338,11 @@ class TradingBot:
 
                 # Ajustar a quantidade mínima necessária para atender ao notional mínimo
                 quantidade_ajustada = min_notional / preco_atual
+
+                logging.info(
+                    f"Quantidade ajustada para {symbol}: {quantidade_ajustada}"
+                )
+
                 return quantidade_ajustada
 
             # Se o notional inicial já for suficiente, retorna a quantidade original
