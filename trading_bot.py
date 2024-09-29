@@ -322,6 +322,7 @@ class TradingBot:
 
             # Obtém o filtro de valor mínimo de notional (MIN_NOTIONAL)
             filters = {f["filterType"]: f for f in info["filters"]}
+            logging.info(f"Filters: {filters}")
             min_notional_filter = filters.get("MIN_NOTIONAL")
 
             if not min_notional_filter:
