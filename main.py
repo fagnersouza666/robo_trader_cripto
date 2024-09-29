@@ -3,6 +3,7 @@ import logging
 import ast
 from trading_bot import TradingBot
 from dotenv import load_dotenv
+from binance.client import Client
 
 # Configuração do logging
 logging.basicConfig(
