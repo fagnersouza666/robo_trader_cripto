@@ -343,6 +343,15 @@ class TradingBot:
                     f"Quantidade ajustada para {symbol}: {quantidade_ajustada}"
                 )
 
+                saldo_disponivel = self.verificar_saldo_moedas(
+                    symbol.replace("USDT", "")
+                )
+                if quantidade_ajustada > saldo_disponivel:
+                    logger.error(
+                        f"Saldo disponível ({saldo_disponivel}) é insuficiente para atingir o valor mínimo de notional ({min_notional})."
+                    )
+                    return 0  # Não executa a ordem se o saldo for insuficiente
+
                 return quantidade_ajustada
 
             # Se o notional inicial já for suficiente, retorna a quantidade original
@@ -351,6 +360,36 @@ class TradingBot:
         except Exception as e:
             logger.error(f"Erro ao ajustar quantidade para notional em {symbol}: {e}")
             return 0
+
+    def verificar_saldo_moedas(self, moeda: str) -> float:
+        """
+        Verifica o saldo disponível de uma moeda específica.
+
+        :param moeda: O símbolo da moeda, como "BTC", "ETH", "JUP" (sem o "USDT").
+        :return: O saldo disponível da moeda.
+        """
+        try:
+            logger.info(f"Verificando saldo disponível em {moeda}...")
+
+            # Obter todas as informações de conta (incluindo saldo) via API da Binance
+            conta = self.client.get_account()
+
+            # Procurar o saldo da moeda especificada
+            for asset in conta["balances"]:
+                if asset["asset"] == moeda:
+                    saldo_disponivel = float(
+                        asset["free"]
+                    )  # Saldo disponível para negociação
+                    logger.info(f"Saldo disponível em {moeda}: {saldo_disponivel}")
+                    return saldo_disponivel
+
+            # Se a moeda não for encontrada, retorna 0
+            logger.warning(f"Saldo para a moeda {moeda} não encontrado.")
+            return 0.0
+
+        except Exception as e:
+            logger.error(f"Erro ao verificar o saldo para a moeda {moeda}: {e}")
+            return 0.0
 
     def comprar(self, key, stake):
         logging.info("Comprar")
