@@ -41,6 +41,8 @@ class TradingBot:
         telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
         self.notificador_telegram = TelegramNotifier(telegram_token, telegram_chat_id)
         self.symbols = symbols
+        self.casas_decimais = casas_decimais
+        self.min_notional = min_notional
 
     def calcular_stake(self, symbol: str, risco_percentual: float = 1.0) -> float:
         """
@@ -320,7 +322,7 @@ class TradingBot:
             preco_atual = float(self.client.get_symbol_ticker(symbol=symbol)["price"])
 
             # Obter o valor mínimo de notional da lista manual ou usar o valor padrão
-            min_notional = MIN_NOTIONAL.get(symbol, min_notional_padrao)
+            min_notional = self.min_notional.get(symbol, min_notional_padrao)
 
             # Calcula o valor notional atual com a quantidade fornecida
             notional = preco_atual * quantidade
