@@ -211,13 +211,13 @@ class TradingBot:
                     preco_compra = self.comprar(key, stake)
 
                 elif acao == "Vender" or acao == "VenderParcial":
-                    self.vender(key, value, acao, stake, preco_compra)
+                    self.vender(key, value, acao, stake)
 
             except Exception as e:
                 traceback.print_exc()
                 logger.error(f"Erro inesperado no símbolo  {key}: {e}")
 
-    def vender(self, key, value, acao, stake, preco_compra):
+    def vender(self, key, value, acao, stake):
         logging.info(f"{acao}")
 
         # Obter preço médio e quantidade total de compras
@@ -250,7 +250,7 @@ class TradingBot:
                     key,
                     "VENDA",
                     float(stake),
-                    preco_compra,
+                    preco_venda_real,
                     valor_total,
                     taxa,
                     1,
