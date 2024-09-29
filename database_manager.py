@@ -117,7 +117,7 @@ class DatabaseManager:
         """
         query = """
         INSERT INTO ganhos (data_hora, simbolo, valor_compras, valor_vendas, taxa_compra, ganhos, porcentagem, taxa_venda)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """
         self.cursor.execute(
             query,
@@ -142,10 +142,19 @@ class DatabaseManager:
         """
         query = """
         UPDATE resumo_financeiro
-        SET valor_atual = %s, porcentagem_geral = %s
-        WHERE valor_inicial = %s
+        SET valor_atual = ?, porcentagem_geral = ?
+        WHERE valor_inicial = ?
         """
         self.cursor.execute(query, (valor_atual, porcentagem_geral, valor_inicial))
+        self.conn.commit()
+
+    def atualizar_compras(self, moeda):
+        query = """
+        UPDATE transacoes
+        SET vendido = 1
+        WHERE simbolo = ? AND tipo = 'COMPRA'
+        """
+        self.cursor.execute(query, (moeda))
         self.conn.commit()
 
     def obter_transacoes(self, simbolo: str, tipo: str = None):

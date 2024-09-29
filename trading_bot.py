@@ -276,6 +276,7 @@ class TradingBot:
                     taxa,
                     1,
                 )
+                self.database_manager.atualizar_compras(key)
 
                 valor_total_vendas = quantidade_total * preco_venda_real
                 valor_total_compras = quantidade_total * preco_medio_compra
