@@ -229,6 +229,12 @@ class TradingBot:
             f"Preço médio de compra: {preco_medio_compra}, Quantidade total: {quantidade_total}, Taxas totais: {taxas_total_compras}, moeda: {key}"
         )
 
+        if quantidade_total == 0:
+            logger.warning(f"Quantidade total para venda de {key} é zero.")
+            return
+
+        logger.info(f"Executando {acao} para {key}")
+
         if quantidade_total != 0:
 
             # Ajusta a quantidade para garantir que o valor notional seja suficiente
@@ -239,8 +245,6 @@ class TradingBot:
             if quantidade_total == 0:
                 logger.warning(f"Quantidade total para venda de {key} é zero.")
                 return
-
-            logger.info(f"Executando {acao} para {key}")
 
             # Ajusta a quantidade para garantir que o valor notional seja suficiente
             quantidade_total = self._ajustar_quantidade_para_notional(
@@ -368,6 +372,11 @@ class TradingBot:
                     )
                     return 0
 
+                # Garantir que a quantidade ajustada atenda ao step size do ativo
+                quantidade_ajustada = self._ajustar_para_step_size(
+                    symbol, quantidade_ajustada
+                )
+
                 logger.info(
                     f"Quantidade ajustada para atender ao notional: {quantidade_ajustada}"
                 )
@@ -377,6 +386,29 @@ class TradingBot:
 
         except Exception as e:
             logger.error(f"Erro ao ajustar quantidade para notional em {symbol}: {e}")
+            return 0
+
+    def _ajustar_para_step_size(self, symbol: str, quantidade: float):
+        """
+        Ajusta a quantidade para garantir que ela atenda ao step size permitido pela Binance.
+        """
+        try:
+            info = self.client.get_symbol_info(symbol)
+            filters = {f["filterType"]: f for f in info["filters"]}
+            lot_size_filter = filters.get("stepSize")
+
+            if not lot_size_filter:
+                raise ValueError(
+                    f"Filtro LOT_SIZE não encontrado para o símbolo {symbol}."
+                )
+
+            step_size = float(lot_size_filter["stepSize"])
+            quantidade_ajustada = (quantidade // step_size) * step_size
+
+            return quantidade_ajustada
+
+        except Exception as e:
+            logger.error(f"Erro ao ajustar quantidade para step size em {symbol}: {e}")
             return 0
 
     def comprar(self, key, stake):
