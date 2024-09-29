@@ -241,11 +241,6 @@ class TradingBot:
             quantidade_total = self._ajustar_quantidade_para_notional(
                 key, quantidade_total
             )
-
-            if quantidade_total == 0:
-                logger.warning(f"Quantidade total para venda de {key} é zero.")
-                return
-
             # Ajusta a quantidade para garantir que o valor notional seja suficiente
             quantidade_total = self._ajustar_quantidade_para_notional(
                 key, quantidade_total
@@ -326,7 +321,7 @@ class TradingBot:
         """
         Ajusta a quantidade para garantir que o valor notional atenda ao mínimo permitido pela Binance.
         Se o filtro NOTIONAL for encontrado, usa esse valor. Caso contrário, usa um valor padrão.
-        Se o saldo disponível não for suficiente para atingir o notional mínimo, retorna 0.
+        Se o saldo disponível não for suficiente para atingir o notional mínimo, usa o saldo total.
         """
         try:
             logger.info(f"Ajustando quantidade para notional para {symbol}...")
@@ -354,33 +349,31 @@ class TradingBot:
             # Calcula o valor notional atual
             notional = preco_atual * quantidade
 
-            # Se o notional for menor que o permitido, ajusta a quantidade
+            # Se o notional for menor que o permitido, tenta ajustar a quantidade para o saldo total
             if notional < min_notional:
                 logger.warning(
                     f"Valor notional ({notional}) é menor que o mínimo permitido ({min_notional}) para {symbol}."
                 )
-                # Calcula a quantidade mínima necessária para atingir o min_notional
-                quantidade_ajustada = min_notional / preco_atual
 
-                # Verificar se o saldo disponível é suficiente para a quantidade ajustada
+                # Verificar o saldo total disponível
                 saldo_disponivel = self.verificar_saldo_moedas(
                     symbol.replace("USDT", "")
                 )  # Remover "USDT" do símbolo para obter o saldo
-                if quantidade_ajustada > saldo_disponivel:
+
+                # Calcular o valor notional com o saldo total disponível
+                notional_com_saldo_total = saldo_disponivel * preco_atual
+
+                if notional_com_saldo_total < min_notional:
                     logger.error(
-                        f"Saldo insuficiente para executar a ordem. Saldo disponível: {saldo_disponivel}, necessário: {quantidade_ajustada}"
+                        f"Saldo total ({saldo_disponivel}) ainda é insuficiente para atingir o valor mínimo de notional ({min_notional}). Operação cancelada."
                     )
-                    return 0
+                    return 0  # Cancela a operação se o saldo total não for suficiente
 
-                # Garantir que a quantidade ajustada atenda ao step size do ativo
-                quantidade_ajustada = self._ajustar_para_step_size(
-                    symbol, quantidade_ajustada
-                )
-
+                # Caso contrário, usar o saldo total disponível
                 logger.info(
-                    f"Quantidade ajustada para atender ao notional: {quantidade_ajustada}"
+                    f"Usando saldo total disponível: {saldo_disponivel} para tentar atingir o notional."
                 )
-                return quantidade_ajustada
+                return saldo_disponivel  # Usa o saldo total para executar a ordem
 
             return quantidade
 
