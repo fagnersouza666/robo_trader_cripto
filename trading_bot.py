@@ -238,7 +238,7 @@ class TradingBot:
 
             # Executar a venda de toda a quantidade acumulada
             resultado = self.trade_executor.executar_ordem(
-                key,
+                value,
                 quantidade_total,
                 "sell",
                 "VenderParcial" == acao,
