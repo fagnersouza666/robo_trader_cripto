@@ -236,6 +236,17 @@ class TradingBot:
                 key, quantidade_total
             )
 
+            if quantidade_total == 0:
+                logger.warning(f"Quantidade total para venda de {key} é zero.")
+                return
+
+            logger.info(f"Executando {acao} para {key}")
+
+            # Ajusta a quantidade para garantir que o valor notional seja suficiente
+            quantidade_total = self._ajustar_quantidade_para_notional(
+                key, quantidade_total
+            )
+
             if quantidade_total <= 0:
                 logger.error(
                     f"Quantidade ajustada para {key} é zero ou negativa. Operação de venda cancelada."
