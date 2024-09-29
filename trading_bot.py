@@ -346,13 +346,14 @@ class TradingBot:
             else:
                 min_notional = float(notional_filter["minNotional"])
 
-            # Calcula o valor notional atual
+            # Calcula o valor notional atual com a quantidade fornecida
             notional = preco_atual * quantidade
 
-            # Se o notional for menor que o permitido, tenta ajustar a quantidade para o saldo total
+            # Se o notional for menor que o permitido, usa o saldo total disponível
             if notional < min_notional:
                 logger.warning(
-                    f"Valor notional ({notional}) é menor que o mínimo permitido ({min_notional}) para {symbol}."
+                    f"Valor notional ({notional}) é menor que o mínimo permitido ({min_notional}) para {symbol}. "
+                    f"Tentando usar o saldo total disponível."
                 )
 
                 # Verificar o saldo total disponível
@@ -363,9 +364,11 @@ class TradingBot:
                 # Calcular o valor notional com o saldo total disponível
                 notional_com_saldo_total = saldo_disponivel * preco_atual
 
+                # Verificar se o saldo total é suficiente para o notional mínimo
                 if notional_com_saldo_total < min_notional:
                     logger.error(
-                        f"Saldo total ({saldo_disponivel}) ainda é insuficiente para atingir o valor mínimo de notional ({min_notional}). Operação cancelada."
+                        f"Saldo total ({saldo_disponivel}) ainda é insuficiente para atingir o valor mínimo de notional ({min_notional}). "
+                        f"Valor notional total disponível: {notional_com_saldo_total}. Operação cancelada."
                     )
                     return 0  # Cancela a operação se o saldo total não for suficiente
 
@@ -373,8 +376,9 @@ class TradingBot:
                 logger.info(
                     f"Usando saldo total disponível: {saldo_disponivel} para tentar atingir o notional."
                 )
-                return saldo_disponivel  # Usa o saldo total para executar a ordem
+                return saldo_disponivel  # Usa o saldo total disponível para a ordem
 
+            # Se o notional inicial já for suficiente, retorna a quantidade original
             return quantidade
 
         except Exception as e:
