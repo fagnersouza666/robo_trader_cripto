@@ -93,9 +93,14 @@ class TradeExecutor:
             # Ajuste a quantidade com base no step size
             quantidade_ajustada = round(quantidade // step_size * step_size, 8)
 
-            logging.info(f"quantidade ajustada: {quantidade_ajustada}")
+            # Formatar a quantidade para garantir que não tenha mais casas decimais que o necessário
+            quantidade_ajustada_str = (
+                "{:0.8f}".format(quantidade_ajustada).rstrip("0").rstrip(".")
+            )
 
-            return quantidade_ajustada
+            logging.info(f"quantidade ajustada: {quantidade_ajustada_str}")
+
+            return float(quantidade_ajustada_str)
 
         except Exception as e:
             logger.error(f"Erro ao ajustar quantidade para {symbol}: {e}")

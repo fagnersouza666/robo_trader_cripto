@@ -300,6 +300,7 @@ class TradingBot:
 
         if resultado is None:
             logger.error(f"Falha ao executar a ordem para {key}.")
+            return None
         else:
             preco_compra, taxa = resultado
             logger.info(f"Preço de compra: {preco_compra}, Taxa: {taxa}")
