@@ -154,7 +154,7 @@ class DatabaseManager:
         SET vendido = 1
         WHERE simbolo = ? AND tipo = 'COMPRA'
         """
-        self.cursor.execute(query, (moeda))
+        self.cursor.execute(query, (moeda,))
         self.conn.commit()
 
     def obter_transacoes(self, simbolo: str, tipo: str = None):
