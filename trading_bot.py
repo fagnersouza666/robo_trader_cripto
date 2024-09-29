@@ -310,7 +310,8 @@ class TradingBot:
     ):
         """
         Ajusta a quantidade para garantir que o valor notional atenda ao mínimo permitido pela Binance.
-        Se o filtro NOTIONAL for encontrado, usa esse valor, caso contrário, usa um valor padrão.
+        Se o filtro NOTIONAL for encontrado, usa esse valor. Caso contrário, usa um valor padrão.
+        Se o saldo disponível não for suficiente para atingir o notional mínimo, retorna 0.
         """
         try:
             logger.info(f"Ajustando quantidade para notional para {symbol}...")
@@ -343,7 +344,19 @@ class TradingBot:
                 logger.warning(
                     f"Valor notional ({notional}) é menor que o mínimo permitido ({min_notional}) para {symbol}."
                 )
+                # Calcula a quantidade mínima necessária para atingir o min_notional
                 quantidade_ajustada = min_notional / preco_atual
+
+                # Verificar se o saldo disponível é suficiente para a quantidade ajustada
+                saldo_disponivel = self.verificar_saldo_moedas(
+                    symbol.replace("USDT", "")
+                )  # Remover "USDT" do símbolo para obter o saldo
+                if quantidade_ajustada > saldo_disponivel:
+                    logger.error(
+                        f"Saldo insuficiente para executar a ordem. Saldo disponível: {saldo_disponivel}, necessário: {quantidade_ajustada}"
+                    )
+                    return 0
+
                 logger.info(
                     f"Quantidade ajustada para atender ao notional: {quantidade_ajustada}"
                 )
