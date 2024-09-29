@@ -331,7 +331,7 @@ class TradeExecutor:
             # Obtém o preço de venda
             preco_venda = float(ordem_venda["fills"][0]["price"])
 
-            taxaM = float(preco_venda["fills"][0]["commission"])
+            taxaM = float(ordem_venda["fills"][0]["commission"])
             taxa = taxaM * preco_venda
 
             if taxa is None:
