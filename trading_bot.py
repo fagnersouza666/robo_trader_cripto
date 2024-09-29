@@ -305,9 +305,12 @@ class TradingBot:
                     f"Venda registrada para {key}: Ganho de {ganho_total} USDT, porcentagem de {porcentagem_ganho:.2f}%"
                 )
 
-    def _ajustar_quantidade_para_notional(self, symbol: str, quantidade: float):
+    def _ajustar_quantidade_para_notional(
+        self, symbol: str, quantidade: float, min_notional_padrao: float = 10.0
+    ):
         """
         Ajusta a quantidade para garantir que o valor notional atenda ao mínimo permitido pela Binance.
+        Se o filtro NOTIONAL for encontrado, usa esse valor, caso contrário, usa um valor padrão.
         """
         try:
             logger.info(f"Ajustando quantidade para notional para {symbol}...")
@@ -320,17 +323,17 @@ class TradingBot:
             # Obter o preço atual do ativo
             preco_atual = float(self.client.get_symbol_ticker(symbol=symbol)["price"])
 
-            # Obtém o filtro de valor mínimo de notional (MIN_NOTIONAL)
+            # Obtém o filtro de valor mínimo de notional (NOTIONAL)
             filters = {f["filterType"]: f for f in info["filters"]}
-            logging.info(f"Filters: {filters}")
-            min_notional_filter = filters.get("MIN_NOTIONAL")
+            notional_filter = filters.get("NOTIONAL")
 
-            if not min_notional_filter:
-                raise ValueError(
-                    f"Filtro MIN_NOTIONAL não encontrado para o símbolo {symbol}."
+            if not notional_filter:
+                logger.warning(
+                    f"Filtro NOTIONAL não encontrado para o símbolo {symbol}. Utilizando valor padrão de {min_notional_padrao}."
                 )
-
-            min_notional = float(min_notional_filter["minNotional"])
+                min_notional = min_notional_padrao
+            else:
+                min_notional = float(notional_filter["minNotional"])
 
             # Calcula o valor notional atual
             notional = preco_atual * quantidade
