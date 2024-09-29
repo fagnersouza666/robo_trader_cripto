@@ -24,6 +24,8 @@ class TradingBot:
         openai_api_key,
         cryptocompare_api_key,
         symbols,
+        casas_decimais,
+        min_notional,
         interval=Client.KLINE_INTERVAL_15MINUTE,
     ):
         self.client = Client(api_key=binance_api_key, api_secret=binance_secret_key)
@@ -170,16 +172,6 @@ class TradingBot:
             logging.error(f"Erro ao ajustar quantidade para {symbol}: {e}")
             raise
 
-    def executar_ordem_compra(self, symbol):
-        stake = self.calcular_stake(symbol)
-        if preco_compra := self.trade_executor.executar_compra(symbol, stake, 2, 4):
-            self.registrar_transacao(symbol, "compra", stake, preco_compra)
-
-    def executar_ordem_venda(self, symbol):
-        quantidade = self.db_manager.obter_quantidade_total(symbol)
-        if preco_venda := self.trade_executor.executar_venda(symbol, quantidade):
-            self.registrar_transacao(symbol, "venda", quantidade, preco_venda)
-
     def executar_estrategia(self):
 
         for key, value in self.symbols.items():
@@ -217,6 +209,8 @@ class TradingBot:
                 traceback.print_exc()
                 logger.error(f"Erro inesperado no símbolo  {key}: {e}")
 
+        self.database_manager.fechar_conexao()
+
     def vender(self, key, value, acao, stake):
         logging.info(f"{acao}")
 
@@ -237,10 +231,6 @@ class TradingBot:
 
         if quantidade_total != 0:
 
-            # Ajusta a quantidade para garantir que o valor notional seja suficiente
-            quantidade_total = self._ajustar_quantidade_para_notional(
-                key, quantidade_total
-            )
             # Ajusta a quantidade para garantir que o valor notional seja suficiente
             quantidade_total = self._ajustar_quantidade_para_notional(
                 key, quantidade_total
@@ -320,93 +310,37 @@ class TradingBot:
         self, symbol: str, quantidade: float, min_notional_padrao: float = 10.0
     ):
         """
-        Ajusta a quantidade para garantir que o valor notional atenda ao mínimo permitido pela Binance.
-        Se o filtro NOTIONAL for encontrado, usa esse valor. Caso contrário, usa um valor padrão.
-        Se o saldo disponível não for suficiente para atingir o notional mínimo, usa o saldo total.
+        Ajusta a quantidade para garantir que o valor notional atenda ao mínimo permitido pela lista manual.
+        Se a quantidade fornecida for menor que o notional mínimo, ajusta a quantidade com base no valor do dicionário MIN_NOTIONAL.
         """
         try:
             logger.info(f"Ajustando quantidade para notional para {symbol}...")
 
-            # Obtém as informações de trading do símbolo
-            info = self.client.get_symbol_info(symbol)
-            if not info:
-                raise ValueError(f"Informações do símbolo {symbol} não encontradas.")
-
             # Obter o preço atual do ativo
             preco_atual = float(self.client.get_symbol_ticker(symbol=symbol)["price"])
 
-            # Obtém o filtro de valor mínimo de notional (NOTIONAL)
-            filters = {f["filterType"]: f for f in info["filters"]}
-            notional_filter = filters.get("NOTIONAL")
-
-            if not notional_filter:
-                logger.warning(
-                    f"Filtro NOTIONAL não encontrado para o símbolo {symbol}. Utilizando valor padrão de {min_notional_padrao}."
-                )
-                min_notional = min_notional_padrao
-            else:
-                min_notional = float(notional_filter["minNotional"])
+            # Obter o valor mínimo de notional da lista manual ou usar o valor padrão
+            min_notional = MIN_NOTIONAL.get(symbol, min_notional_padrao)
 
             # Calcula o valor notional atual com a quantidade fornecida
             notional = preco_atual * quantidade
 
-            # Se o notional for menor que o permitido, usa o saldo total disponível
+            # Se o notional for menor que o permitido, ajustar a quantidade
             if notional < min_notional:
                 logger.warning(
                     f"Valor notional ({notional}) é menor que o mínimo permitido ({min_notional}) para {symbol}. "
-                    f"Tentando usar o saldo total disponível."
+                    f"Ajustando a quantidade..."
                 )
 
-                # Verificar o saldo total disponível
-                saldo_disponivel = self.verificar_saldo_moedas(
-                    symbol.replace("USDT", "")
-                )  # Remover "USDT" do símbolo para obter o saldo
-
-                # Calcular o valor notional com o saldo total disponível
-                notional_com_saldo_total = saldo_disponivel * preco_atual
-
-                # Verificar se o saldo total é suficiente para o notional mínimo
-                if notional_com_saldo_total < min_notional:
-                    logger.error(
-                        f"Saldo total ({saldo_disponivel}) ainda é insuficiente para atingir o valor mínimo de notional ({min_notional}). "
-                        f"Valor notional total disponível: {notional_com_saldo_total}. Operação cancelada."
-                    )
-                    return 0  # Cancela a operação se o saldo total não for suficiente
-
-                # Caso contrário, usar o saldo total disponível
-                logger.info(
-                    f"Usando saldo total disponível: {saldo_disponivel} para tentar atingir o notional."
-                )
-                return saldo_disponivel  # Usa o saldo total disponível para a ordem
+                # Ajustar a quantidade mínima necessária para atender ao notional mínimo
+                quantidade_ajustada = min_notional / preco_atual
+                return quantidade_ajustada
 
             # Se o notional inicial já for suficiente, retorna a quantidade original
             return quantidade
 
         except Exception as e:
             logger.error(f"Erro ao ajustar quantidade para notional em {symbol}: {e}")
-            return 0
-
-    def _ajustar_para_step_size(self, symbol: str, quantidade: float):
-        """
-        Ajusta a quantidade para garantir que ela atenda ao step size permitido pela Binance.
-        """
-        try:
-            info = self.client.get_symbol_info(symbol)
-            filters = {f["filterType"]: f for f in info["filters"]}
-            lot_size_filter = filters.get("stepSize")
-
-            if not lot_size_filter:
-                raise ValueError(
-                    f"Filtro LOT_SIZE não encontrado para o símbolo {symbol}."
-                )
-
-            step_size = float(lot_size_filter["stepSize"])
-            quantidade_ajustada = (quantidade // step_size) * step_size
-
-            return quantidade_ajustada
-
-        except Exception as e:
-            logger.error(f"Erro ao ajustar quantidade para step size em {symbol}: {e}")
             return 0
 
     def comprar(self, key, stake):
@@ -432,67 +366,6 @@ class TradingBot:
             )
 
         return preco_compra
-
-    def calcular_preco_medio_e_quantidade(self, symbol):
-        """
-        Calcula o preço médio de compra e a quantidade total acumulada para uma moeda,
-        considerando todas as compras e subtraindo as vendas. Define a taxa como 0.
-        """
-        try:
-
-            data_inicio = self.converter_data_para_timestamp(2024, 9, 1)
-
-            # Obtém o histórico de ordens de compra e venda do símbolo fornecido a partir da data especificada
-            ordens = self.client.get_all_orders(
-                symbol=symbol, limit=1000, startTime=data_inicio
-            )
-
-            valor_total_compras = 0
-            quantidade_total_comprada = 0
-            quantidade_total_vendida = 0
-            taxas_total = 0  # A taxa será fixada como 0, conforme solicitado.
-
-            for ordem in ordens:
-                # Considera apenas ordens preenchidas
-                if ordem["status"] == "FILLED":
-                    quantidade = float(ordem["executedQty"])
-
-                    if ordem["side"] == "BUY":
-                        preco = float(ordem["price"])
-                        # Atualiza o valor total de compras e a quantidade total comprada
-                        quantidade_total_comprada += quantidade
-                        valor_total_compras += quantidade * preco
-
-                    elif ordem["side"] == "SELL":
-                        # Atualiza a quantidade total vendida
-                        quantidade_total_vendida += quantidade
-
-            # Se não houver compras registradas
-            if quantidade_total_comprada == 0:
-                return 0, 0, 0
-
-            # Calcula o saldo final (quantidade comprada - quantidade vendida)
-            quantidade_final = quantidade_total_comprada - quantidade_total_vendida
-
-            # Se o saldo for zero ou negativo, significa que todas as moedas foram vendidas
-            if quantidade_final <= 0:
-                return 0, 0, 0
-
-            # Calcula o preço médio apenas das compras
-            preco_medio = valor_total_compras / quantidade_total_comprada
-
-            # Retorna a quantidade final, preço médio e taxa (0)
-            return quantidade_final, preco_medio, 0
-
-        except Exception as e:
-            traceback.print_exc()
-            logger.error(
-                f"Erro ao calcular preço médio e quantidade para {symbol}: {e}"
-            )
-            return 0, 0, 0
-
-    def converter_data_para_timestamp(self, ano, mes, dia):
-        return int(datetime(ano, mes, dia).timestamp() * 1000)
 
     def estrategia_venda_reversao(self, df, symbol):
         """
@@ -686,12 +559,3 @@ class TradingBot:
         logger.info(
             f"{tipo_operacao} de {quantidade} {symbol} a {preco} USDT (Total: {valor_total} USDT)"
         )
-
-    def obter_historico_ordens(self, simbolo, ano, mes, dia):
-        data_inicio = self.converter_data_para_timestamp(ano, mes, dia)
-        return self.client.get_all_orders(symbol=simbolo, startTime=data_inicio)
-
-    def algum_outro_metodo(self):
-        # ... código existente ...
-        historico_ordens = self.obter_historico_ordens("BTCUSDT", 2024, 9, 1)
-        # ... resto do código ...

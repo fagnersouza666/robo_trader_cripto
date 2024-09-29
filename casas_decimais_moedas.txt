@@ -1,0 +1,13 @@
+Moeda: BTCUSDT, Casas Decimais: 5
+Moeda: ETHUSDT, Casas Decimais: 4
+Moeda: DOGEUSDT, Casas Decimais: 1
+Moeda: STXUSDT, Casas Decimais: 1
+Moeda: SOLUSDT, Casas Decimais: 3
+Moeda: MKRUSDT, Casas Decimais: 4
+Moeda: AVAXUSDT, Casas Decimais: 2
+Moeda: MAGICUSDT, Casas Decimais: 1
+Moeda: PEPEUSDT, Casas Decimais: 1
+Moeda: PENDLEUSDT, Casas Decimais: 1
+Moeda: SEIUSDT, Casas Decimais: 1
+Moeda: TIAUSDT, Casas Decimais: 2
+Moeda: JUPUSDT, Casas Decimais: 1

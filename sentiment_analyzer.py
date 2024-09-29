@@ -14,8 +14,14 @@ class SentimentAnalyzer:
         try:
             noticias = self._coletar_noticias(symbol)
             return self._analisar_texto_noticias(noticias, symbol)
+        except requests.RequestException as e:
+            logger.error(f"Erro ao coletar notícias para {symbol}: {e}")
+            return "Neutro"  # Falha ao coletar notícias resulta em sentimento Neutro
+        except openai.error.OpenAIError as e:
+            logger.error(f"Erro ao analisar sentimento via OpenAI para {symbol}: {e}")
+            return "Neutro"
         except Exception as e:
-            logger.error(f"[{symbol}] Erro ao analisar sentimento: {e}")
+            logger.error(f"Erro inesperado ao analisar sentimento para {symbol}: {e}")
             return "Neutro"
 
     def _coletar_noticias(self, symbol: str) -> list:
@@ -38,13 +44,17 @@ class SentimentAnalyzer:
 
         textos = " ".join([artigo["title"] for artigo in artigos[:5]])
         prompt = f"Analise o seguinte texto e determine o sentimento geral sobre {symbol}. E responda somente: Positivo, Negativo ou Neutro, conforme sua análise quanto a essa criptomoeda. Textos: {textos}"
-        resposta = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=10,
-            n=1,
-            stop=None,
-            temperature=0.5,
-        )
+        try:
+            resposta = openai.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=10,
+                n=1,
+                stop=None,
+                temperature=0.5,
+            )
 
-        return resposta.choices[0].message.content.strip()
+            return resposta.choices[0].message.content.strip()
+        except openai.error.OpenAIError as e:
+            logger.error(f"Erro na API OpenAI: {e}")
+            return "Neutro"

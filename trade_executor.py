@@ -1,6 +1,6 @@
 import logging
 from binance.client import Client
-from binance.exceptions import BinanceAPIException
+from binance.exceptions import BinanceAPIException, BinanceRequestException
 import traceback
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,31 @@ class TradeExecutor:
             return preco_compra
         except BinanceAPIException as e:
             logger.error(f"Erro ao executar compra: {e}")
+            if e.code in [1100, -1000]:  # Erros temporários da Binance
+                logger.info("Tentando novamente após erro temporário.")
+                return self._retry_order_market_buy(symbol, quantidade)
             return None
+        except BinanceRequestException as e:
+            logger.error(f"Erro de requisição com a Binance: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Erro inesperado: {e}")
+            traceback.print_exc()
+            return None
+
+    def _retry_order_market_buy(self, symbol: str, quantidade: float, tentativas=3):
+        """Tenta novamente a ordem de compra em caso de erro temporário."""
+        for i in range(tentativas):
+            try:
+                logger.info(f"Tentativa {i+1} de recompra.")
+                ordem = self.client.order_market_buy(symbol=symbol, quantity=quantidade)
+                preco_compra = float(ordem["fills"][0]["price"])
+                return preco_compra
+            except BinanceAPIException as e:
+                logger.error(f"Tentativa {i+1} falhou: {e}")
+                if i == tentativas - 1:
+                    logger.error("Excedido número de tentativas.")
+        return None
 
     def executar_venda(self, symbol: str, quantidade: float):
         try:

@@ -30,6 +30,8 @@ if __name__ == "__main__":
     openai_api_key = os.getenv("OPENAI_API_KEY")
     cryptocompare_api_key = os.getenv("CRYPTOCOMPARE_API_KEY")
     symbols = os.getenv("SYMBOLS")
+    casas_decimais = os.getenv("CASAS_DECIMAIS")
+    min_notional = os.getenv("MIN_NOTIONAL")
 
     if not binance_api_key or not binance_secret_key:
         logging.error("Chaves de API da Binance não encontradas.")
@@ -50,6 +52,8 @@ if __name__ == "__main__":
         openai_api_key=openai_api_key,
         cryptocompare_api_key=cryptocompare_api_key,
         symbols=ast.literal_eval(symbols),
+        casas_decimais=ast.literal_eval(casas_decimais),
+        min_notional=ast.literal_eval(min_notional),
     )
 
     # Iniciar o bot
