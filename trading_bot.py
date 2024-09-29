@@ -27,8 +27,6 @@ class TradingBot:
         interval=Client.KLINE_INTERVAL_15MINUTE,
     ):
         self.client = Client(api_key=binance_api_key, api_secret=binance_secret_key)
-        # self.client.API_URL = "https://api.binance.com/api/v3"
-        # self.client.ping()
         self.client.time_sync = True
         self.data_handler = DataHandler(self.client, interval)
         self.indicator_calculator = IndicatorCalculator()
@@ -172,7 +170,17 @@ class TradingBot:
             logging.error(f"Erro ao ajustar quantidade para {symbol}: {e}")
             raise
 
-    def executar_trading(self):
+    def executar_ordem_compra(self, symbol):
+        stake = self.calcular_stake(symbol)
+        if preco_compra := self.trade_executor.executar_compra(symbol, stake, 2, 4):
+            self.registrar_transacao(symbol, "compra", stake, preco_compra)
+
+    def executar_ordem_venda(self, symbol):
+        quantidade = self.db_manager.obter_quantidade_total(symbol)
+        if preco_venda := self.trade_executor.executar_venda(symbol, quantidade):
+            self.registrar_transacao(symbol, "venda", quantidade, preco_venda)
+
+    def executar_estrategia(self):
 
         for key, value in self.symbols.items():
             try:
@@ -200,115 +208,114 @@ class TradingBot:
                     continue  # Pula para o próximo símbolo se stake for None
 
                 if acao == "Comprar":
-                    logging.info("Comprar")
-                    resultado = self.trade_executor.executar_ordem(
-                        key, stake, "buy", False
-                    )
+                    preco_compra = self.comprar(key, stake)
 
-                    if resultado is None:
-                        logger.error(f"Falha ao executar a ordem para {key}.")
-                    else:
-                        preco_compra, taxa = resultado
-                        logger.info(f"Preço de compra: {preco_compra}, Taxa: {taxa}")
-
-                        valor_total = float(stake) * preco_compra
-                        self.registrar_e_notificar_operacao(
-                            key,
-                            "COMPRA",
-                            float(stake),
-                            preco_compra,
-                            valor_total,
-                            taxa,
-                            0,
-                        )
                 elif acao == "Vender" or acao == "VenderParcial":
-                    logging.info(f"{acao}")
-
-                    # Obter preço médio e quantidade total de compras
-                    preco_medio_compra, quantidade_total, taxas_total_compras = (
-                        self.calcular_preco_medio_e_quantidade_banco(key)
-                    )
-
-                    logging.info(
-                        f"Preço médio de compra: {preco_medio_compra}, Quantidade total: {quantidade_total}, Taxas totais: {taxas_total_compras}, moeda: {key}"
-                    )
-
-                    if quantidade_total != 0:
-                        # Executar a venda de toda a quantidade acumulada
-                        resultado = self.trade_executor.executar_ordem(
-                            key,
-                            quantidade_total,
-                            "sell",
-                            "VenderParcial" == acao,
-                            value,
-                        )
-
-                        if resultado is None:
-                            logger.error(
-                                f"Falha ao executar a ordem de venda para {key}."
-                            )
-                        else:
-                            preco_venda_real, taxa = resultado
-                            logger.info(
-                                f"Preço de compra: {preco_compra}, Taxa: {taxa}"
-                            )
-
-                            valor_total = float(stake) * preco_compra
-                            self.registrar_e_notificar_operacao(
-                                key,
-                                "VENDA",
-                                float(stake),
-                                preco_compra,
-                                valor_total,
-                                taxa,
-                                1,
-                            )
-
-                            valor_total_vendas = quantidade_total * preco_venda_real
-                            valor_total_compras = quantidade_total * preco_medio_compra
-                            ganho_total = (
-                                valor_total_vendas
-                                - valor_total_compras
-                                - taxas_total_compras
-                            )
-
-                            # Calcular porcentagem de ganho
-                            porcentagem_ganho = (
-                                ganho_total / valor_total_compras
-                            ) * 100
-
-                            # Registrar no banco de dados
-                            data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            self.database_manager.registrar_ganhos(
-                                data_hora,
-                                key,
-                                valor_total_compras,
-                                valor_total_vendas,
-                                taxas_total_compras,
-                                ganho_total,
-                                porcentagem_ganho,
-                                taxa,
-                            )
-
-                            # Atualizar o resumo financeiro geral
-                            valor_inicial = self.database_manager.obter_valor_inicial()
-                            valor_atual = (
-                                self.database_manager.obter_valor_total_atual()
-                            )  # soma de todas as moedas
-                            porcentagem_geral = (
-                                (valor_atual - valor_inicial) / valor_inicial
-                            ) * 100
-                            self.database_manager.atualizar_resumo_financeiro(
-                                valor_inicial, valor_atual, porcentagem_geral
-                            )
-
-                            logger.info(
-                                f"Venda registrada para {key}: Ganho de {ganho_total} USDT, porcentagem de {porcentagem_ganho:.2f}%"
-                            )
+                    self.vender(key, value, acao, stake, preco_compra)
 
             except Exception as e:
                 traceback.print_exc()
                 logger.error(f"Erro inesperado no símbolo  {key}: {e}")
+
+    def vender(self, key, value, acao, stake, preco_compra):
+        logging.info(f"{acao}")
+
+        # Obter preço médio e quantidade total de compras
+        preco_medio_compra, quantidade_total, taxas_total_compras = (
+            self.calcular_preco_medio_e_quantidade_banco(key)
+        )
+
+        logging.info(
+            f"Preço médio de compra: {preco_medio_compra}, Quantidade total: {quantidade_total}, Taxas totais: {taxas_total_compras}, moeda: {key}"
+        )
+
+        if quantidade_total != 0:
+            # Executar a venda de toda a quantidade acumulada
+            resultado = self.trade_executor.executar_ordem(
+                key,
+                quantidade_total,
+                "sell",
+                "VenderParcial" == acao,
+                value,
+            )
+
+            if resultado is None:
+                logger.error(f"Falha ao executar a ordem de venda para {key}.")
+            else:
+                preco_venda_real, taxa = resultado
+                logger.info(f"Preço de compra: {preco_compra}, Taxa: {taxa}")
+
+                valor_total = float(stake) * preco_compra
+                self.registrar_e_notificar_operacao(
+                    key,
+                    "VENDA",
+                    float(stake),
+                    preco_compra,
+                    valor_total,
+                    taxa,
+                    1,
+                )
+
+                valor_total_vendas = quantidade_total * preco_venda_real
+                valor_total_compras = quantidade_total * preco_medio_compra
+                ganho_total = (
+                    valor_total_vendas - valor_total_compras - taxas_total_compras
+                )
+
+                # Calcular porcentagem de ganho
+                porcentagem_ganho = (ganho_total / valor_total_compras) * 100
+
+                # Registrar no banco de dados
+                data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                self.database_manager.registrar_ganhos(
+                    data_hora,
+                    key,
+                    valor_total_compras,
+                    valor_total_vendas,
+                    taxas_total_compras,
+                    ganho_total,
+                    porcentagem_ganho,
+                    taxa,
+                )
+
+                # Atualizar o resumo financeiro geral
+                valor_inicial = self.database_manager.obter_valor_inicial()
+                valor_atual = (
+                    self.database_manager.obter_valor_total_atual()
+                )  # soma de todas as moedas
+                porcentagem_geral = (
+                    (valor_atual - valor_inicial) / valor_inicial
+                ) * 100
+                self.database_manager.atualizar_resumo_financeiro(
+                    valor_inicial, valor_atual, porcentagem_geral
+                )
+
+                logger.info(
+                    f"Venda registrada para {key}: Ganho de {ganho_total} USDT, porcentagem de {porcentagem_ganho:.2f}%"
+                )
+
+    def comprar(self, key, stake):
+        logging.info("Comprar")
+        resultado = self.trade_executor.executar_ordem(key, stake, "buy", False)
+
+        if resultado is None:
+            logger.error(f"Falha ao executar a ordem para {key}.")
+        else:
+            preco_compra, taxa = resultado
+            logger.info(f"Preço de compra: {preco_compra}, Taxa: {taxa}")
+
+            valor_total = float(stake) * preco_compra
+            self.registrar_e_notificar_operacao(
+                key,
+                "COMPRA",
+                float(stake),
+                preco_compra,
+                valor_total,
+                taxa,
+                0,
+            )
+
+        return preco_compra
 
     def calcular_preco_medio_e_quantidade(self, symbol):
         """

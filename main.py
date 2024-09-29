@@ -53,4 +53,4 @@ if __name__ == "__main__":
     )
 
     # Iniciar o bot
-    bot.executar_trading()
+    bot.executar_estrategia()

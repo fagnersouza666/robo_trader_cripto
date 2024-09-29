@@ -10,6 +10,28 @@ class TradeExecutor:
     def __init__(self, client: Client):
         self.client = client
 
+    def executar_compra(
+        self, symbol: str, quantidade: float, stop_loss: float, take_profit: float
+    ):
+        try:
+            ordem = self.client.order_market_buy(symbol=symbol, quantity=quantidade)
+            logger.info(f"Ordem de compra executada: {ordem}")
+            preco_compra = float(ordem["fills"][0]["price"])
+            self._configurar_stop_loss(symbol, quantidade, preco_compra, stop_loss)
+            return preco_compra
+        except BinanceAPIException as e:
+            logger.error(f"Erro ao executar compra: {e}")
+            return None
+
+    def executar_venda(self, symbol: str, quantidade: float):
+        try:
+            ordem = self.client.order_market_sell(symbol=symbol, quantity=quantidade)
+            logger.info(f"Ordem de venda executada: {ordem}")
+            return float(ordem["fills"][0]["price"])
+        except BinanceAPIException as e:
+            logger.error(f"Erro ao executar venda: {e}")
+            return None
+
     def _get_lot_size_and_min_notional(self, symbol: str):
         """Obtém o tamanho mínimo, máximo e incremento do lote e o valor mínimo de notional para o símbolo."""
         exchange_info = self.client.get_exchange_info()
@@ -227,9 +249,15 @@ class TradeExecutor:
             if quantidade > quantidade_maxima:
                 quantidade = quantidade_maxima
 
+            logging.info(f"Quantidade1: {quantidade}")
+
             quantidade = self._ajustar_quantidade_venda(symbol, quantidade)
 
+            logging.info(f"Quantidade2: {quantidade}")
+
             quantidade = "{:f}".format(quantidade)
+
+            logging.info(f"Quantidade3: {quantidade}")
 
             retorno = self._executar_ordem_sell(symbol, quantidade, 0, 0)
 
@@ -265,8 +293,8 @@ class TradeExecutor:
 
             taxa = taxaM * preco_compra
             # Configura stop loss e take profit
-            self._configurar_stop_loss_take_profit(
-                symbol, quantidade, preco_compra, stop_loss_percent, take_profit_percent
+            self._configurar_stop_loss(
+                symbol, quantidade, preco_compra, stop_loss_percent
             )
 
             return preco_compra, taxa
@@ -310,13 +338,8 @@ class TradeExecutor:
             logger.error(f"Erro ao executar ordem de venda: {e}")
             return None
 
-    def _configurar_stop_loss_take_profit(
-        self,
-        symbol: str,
-        quantidade: float,
-        preco: float,
-        stop_loss_percent: float,
-        take_profit_percent: float,
+    def _configurar_stop_loss(
+        self, symbol: str, quantidade: float, preco: float, stop_loss_percent: float
     ):
         saldo_disponivel = self.verificar_saldo(
             "USDT"
@@ -324,7 +347,6 @@ class TradeExecutor:
 
         # Calcular os preços de Stop Loss e Take Profit
         stop_loss_price = round(preco * (1 - stop_loss_percent / 100), 2)
-        take_profit_price = round(preco * (1 + take_profit_percent / 100), 2)
 
         try:
             # Ajustar a quantidade com o step_size correto
@@ -353,27 +375,6 @@ class TradeExecutor:
             logger.info(
                 f"Ordem de Stop Loss configurada para {symbol} ao preço: {stop_loss_price}"
             )
-
-            # # Verifique se há saldo suficiente para configurar a ordem de Take Profit
-            # if saldo_disponivel < (float(quantidade_ajustada_str) * take_profit_price):
-            #     logger.error(
-            #         f"Saldo insuficiente para configurar o Take Profit para {symbol}. Saldo disponível: {saldo_disponivel}, necessário: {float(quantidade_ajustada_str) * take_profit_price}"
-            #     )
-            #     return None
-
-            # # Cria a ordem de Take Profit com a quantidade ajustada
-            # ordem_take_profit = self.client.create_order(
-            #     symbol=symbol,
-            #     side="SELL",
-            #     type="TAKE_PROFIT_LIMIT",
-            #     quantity=quantidade_ajustada_str,  # Usar a quantidade ajustada
-            #     price=take_profit_price,
-            #     stopPrice=take_profit_price,
-            #     timeInForce="GTC",
-            # )
-            # logger.info(
-            #     f"Ordem de Take Profit configurada para {symbol} ao preço: {take_profit_price}"
-            # )
 
         except BinanceAPIException as e:
             logger.error(f"Erro ao configurar Stop Loss e Take Profit: {e}")
