@@ -230,6 +230,12 @@ class TradingBot:
         )
 
         if quantidade_total != 0:
+
+            # Ajusta a quantidade para garantir que o valor notional seja suficiente
+            quantidade_total = self._ajustar_quantidade_para_notional(
+                key, quantidade_total
+            )
+
             # Executar a venda de toda a quantidade acumulada
             resultado = self.trade_executor.executar_ordem(
                 key,
@@ -243,9 +249,8 @@ class TradingBot:
                 logger.error(f"Falha ao executar a ordem de venda para {key}.")
             else:
                 preco_venda_real, taxa = resultado
-                logger.info(f"Preço de compra: {preco_compra}, Taxa: {taxa}")
 
-                valor_total = float(stake) * preco_compra
+                valor_total = float(stake) * preco_venda_real
                 self.registrar_e_notificar_operacao(
                     key,
                     "VENDA",
@@ -293,6 +298,52 @@ class TradingBot:
                 logger.info(
                     f"Venda registrada para {key}: Ganho de {ganho_total} USDT, porcentagem de {porcentagem_ganho:.2f}%"
                 )
+
+    def _ajustar_quantidade_para_notional(self, symbol: str, quantidade: float):
+        """
+        Ajusta a quantidade para garantir que o valor notional atenda ao mínimo permitido pela Binance.
+        """
+        try:
+            logger.info(f"Ajustando quantidade para notional para {symbol}...")
+
+            # Obtém as informações de trading do símbolo
+            info = self.client.get_symbol_info(symbol)
+            if not info:
+                raise ValueError(f"Informações do símbolo {symbol} não encontradas.")
+
+            # Obter o preço atual do ativo
+            preco_atual = float(self.client.get_symbol_ticker(symbol=symbol)["price"])
+
+            # Obtém o filtro de valor mínimo de notional (MIN_NOTIONAL)
+            filters = {f["filterType"]: f for f in info["filters"]}
+            min_notional_filter = filters.get("MIN_NOTIONAL")
+
+            if not min_notional_filter:
+                raise ValueError(
+                    f"Filtro MIN_NOTIONAL não encontrado para o símbolo {symbol}."
+                )
+
+            min_notional = float(min_notional_filter["minNotional"])
+
+            # Calcula o valor notional atual
+            notional = preco_atual * quantidade
+
+            # Se o notional for menor que o permitido, ajusta a quantidade
+            if notional < min_notional:
+                logger.warning(
+                    f"Valor notional ({notional}) é menor que o mínimo permitido ({min_notional}) para {symbol}."
+                )
+                quantidade_ajustada = min_notional / preco_atual
+                logger.info(
+                    f"Quantidade ajustada para atender ao notional: {quantidade_ajustada}"
+                )
+                return quantidade_ajustada
+
+            return quantidade
+
+        except Exception as e:
+            logger.error(f"Erro ao ajustar quantidade para notional em {symbol}: {e}")
+            return 0
 
     def comprar(self, key, stake):
         logging.info("Comprar")
