@@ -233,8 +233,14 @@ class TradingBot:
 
             # Ajusta a quantidade para garantir que o valor notional seja suficiente
             quantidade_total = self._ajustar_quantidade_para_notional(
-                value, quantidade_total
+                key, quantidade_total
             )
+
+            if quantidade_total <= 0:
+                logger.error(
+                    f"Quantidade ajustada para {key} é zero ou negativa. Operação de venda cancelada."
+                )
+                return
 
             # Executar a venda de toda a quantidade acumulada
             resultado = self.trade_executor.executar_ordem(
