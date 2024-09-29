@@ -233,12 +233,12 @@ class TradingBot:
 
             # Ajusta a quantidade para garantir que o valor notional seja suficiente
             quantidade_total = self._ajustar_quantidade_para_notional(
-                key, quantidade_total
+                value, quantidade_total
             )
 
             # Executar a venda de toda a quantidade acumulada
             resultado = self.trade_executor.executar_ordem(
-                value,
+                key,
                 quantidade_total,
                 "sell",
                 "VenderParcial" == acao,
