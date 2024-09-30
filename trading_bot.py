@@ -13,6 +13,7 @@ from decimal import Decimal, ROUND_DOWN, ROUND_UP
 import traceback
 import re
 import time
+from binance.exceptions import BinanceAPIException
 
 logger = logging.getLogger(__name__)
 
@@ -681,3 +682,40 @@ class TradingBot:
                 logger.error(f"Erro inesperado no símbolo {key}: {e}")
 
         self.database_manager.fechar_conexao()
+
+    def _configurar_trailing_stop(
+        self, symbol: str, quantidade: float, preco: float, trailing_stop_percent: float
+    ):
+        """
+        Configura um stop-loss dinâmico (trailing stop) que sobe à medida que o mercado sobe.
+        """
+        try:
+            logger.info(
+                f"Configurando trailing stop para {symbol}. Preço inicial: {preco}"
+            )
+
+            # Inicialmente define o stop-loss como um percentual abaixo do preço de compra
+            stop_loss_price = round(preco * (1 - trailing_stop_percent / 100), 2)
+
+            # Loop de ajuste para mover o stop-loss conforme o preço sobe
+            while True:
+                preco_atual = float(
+                    self.client.get_symbol_ticker(symbol=symbol)["price"]
+                )
+
+                if preco_atual > preco:
+                    preco = preco_atual  # Atualiza o preço máximo atingido
+                    novo_stop_loss = round(preco * (1 - trailing_stop_percent / 100), 2)
+
+                    if novo_stop_loss > stop_loss_price:
+                        stop_loss_price = novo_stop_loss  # Sobe o stop-loss
+                        logger.info(
+                            f"Novo stop-loss configurado: {stop_loss_price} para {symbol}"
+                        )
+
+                # Aqui adicionamos um intervalo de tempo antes de checar o preço novamente
+                time.sleep(10)  # Pode ser ajustado conforme a estratégia
+
+        except BinanceAPIException as e:
+            logger.error(f"Erro ao configurar trailing stop para {symbol}: {e}")
+            return None

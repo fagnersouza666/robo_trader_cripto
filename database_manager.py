@@ -15,6 +15,7 @@ class DatabaseManager:
         self.criar_tabela_transacoes()
         self.criar_tabela_ganhos()
         self.criar_tabela_resumo()
+        self.criar_tabela_stop_loss()
 
     def criar_tabela_transacoes(self):
         with self.conn:
