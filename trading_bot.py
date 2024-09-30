@@ -661,6 +661,13 @@ class TradingBot:
 
                 # Atualizar o preço máximo e stop-loss dinâmico
                 preco_atual = df["close"].iloc[-1]
+
+                if preco_maximo is None:  # Caso seja a primeira execução
+                    preco_maximo = preco_atual  # Inicializa com o preço atual
+                    stop_loss_atual = (
+                        preco_maximo * 0.97
+                    )  # Stop-loss inicial como 3% abaixo do preço máximo
+
                 if preco_atual > preco_maximo:
                     preco_maximo = preco_atual
                     stop_loss_atual = preco_maximo * 0.97
