@@ -642,63 +642,42 @@ class TradingBot:
 
         self.database_manager.fechar_conexao()
 
-    def vender(self, key, value, acao, stake):
-        logging.info(f"Executando {acao} para {key}")
+    def executar_estrategia_venda(self):
+        for key, value in self.symbols.items():
+            try:
+                # Obter dados de mercado
+                df = self.data_handler.obter_dados_mercado(key)
+                if df.empty:
+                    continue
 
-        # Obter preço médio e quantidade total de compras
-        preco_medio_compra, quantidade_total, taxas_total_compras = (
-            self.calcular_preco_medio_e_quantidade_banco(key)
-        )
+                # Calcular indicadores
+                df = self.indicator_calculator.calcular_indicadores(df)
 
-        # Obter quantidade restante de vendas
-        quantidade_restante = self.database_manager.obter_quantidade_restante(key)
+                # Obter o stop-loss atual do banco de dados
+                stop_loss_atual, preco_maximo = self.database_manager.obter_stop_loss(
+                    key
+                )
 
-        if quantidade_restante is None:
-            quantidade_restante = quantidade_total
+                # Atualizar o preço máximo e stop-loss dinâmico
+                preco_atual = df["close"].iloc[-1]
+                if preco_atual > preco_maximo:
+                    preco_maximo = preco_atual
+                    stop_loss_atual = preco_maximo * 0.97
 
-        if quantidade_restante == 0:
-            logging.warning(f"Quantidade total para venda de {key} é zero.")
-            return
+                # Se o preço atual cair abaixo do stop-loss, vender a posição
+                if preco_atual <= stop_loss_atual:
+                    logger.info(
+                        f"Executando venda devido ao stop-loss atingido para {key}"
+                    )
+                    self.vender(key, value, "Vender", stop_loss_atual)
 
-        # Vender 25% da quantidade restante
-        quantidade_venda_parcial = quantidade_restante * 0.25
-        quantidade_ajustada = self._ajustar_quantidade_para_notional(
-            key, quantidade_venda_parcial
-        )
+                # Atualizar o stop-loss no banco de dados
+                self.database_manager.salvar_stop_loss(
+                    key, stop_loss_atual, preco_maximo
+                )
 
-        if quantidade_ajustada <= 0:
-            logging.error(
-                f"Quantidade ajustada para {key} é insuficiente. Operação de venda parcial cancelada."
-            )
-            return
+            except Exception as e:
+                traceback.print_exc()
+                logger.error(f"Erro inesperado no símbolo {key}: {e}")
 
-        # Executar a venda parcial
-        resultado = self.trade_executor.executar_ordem(
-            key, quantidade_ajustada, "sell", venda_parcial=True, moeda_venda=value
-        )
-
-        if resultado is None:
-            logging.error(f"Falha ao executar a ordem de venda para {key}.")
-        else:
-            preco_venda_real, taxa = resultado
-            quantidade_restante -= (
-                quantidade_ajustada  # Atualiza a quantidade total restante
-            )
-
-            # Atualizar a quantidade restante no banco de dados
-            self.database_manager.atualizar_quantidade_restante(
-                key, quantidade_restante
-            )
-
-            # Notificar a venda parcial
-            self.registrar_e_notificar_operacao(
-                key,
-                "VENDA PARCIAL",
-                float(quantidade_ajustada),
-                preco_venda_real,
-                float(quantidade_ajustada) * preco_venda_real,
-                taxa,
-                1,
-            )
-
-        time.sleep(10)  # Intervalo entre vendas parciais
+        self.database_manager.fechar_conexao()

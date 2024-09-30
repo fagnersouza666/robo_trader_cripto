@@ -187,3 +187,35 @@ class DatabaseManager:
         ]
 
         return lista_transacoes
+
+    def criar_tabela_stop_loss(self):
+        with self.conn:
+            self.cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS stop_loss (
+                    simbolo TEXT PRIMARY KEY,
+                    stop_loss REAL,
+                    preco_maximo REAL
+                )
+                """
+            )
+
+    def salvar_stop_loss(self, simbolo: str, stop_loss: float, preco_maximo: float):
+        with self.conn:
+            self.cursor.execute(
+                """
+                INSERT OR REPLACE INTO stop_loss (simbolo, stop_loss, preco_maximo)
+                VALUES (?, ?, ?)
+                """,
+                (simbolo, stop_loss, preco_maximo),
+            )
+
+    def obter_stop_loss(self, simbolo: str):
+        self.cursor.execute(
+            "SELECT stop_loss, preco_maximo FROM stop_loss WHERE simbolo = ?",
+            (simbolo,),
+        )
+        resultado = self.cursor.fetchone()
+        if resultado:
+            return resultado[0], resultado[1]
+        return None, None
