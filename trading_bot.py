@@ -12,6 +12,7 @@ import math
 from decimal import Decimal, ROUND_DOWN, ROUND_UP
 import traceback
 import re
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -640,3 +641,64 @@ class TradingBot:
                 logger.error(f"Erro inesperado no símbolo {key}: {e}")
 
         self.database_manager.fechar_conexao()
+
+    def vender(self, key, value, acao, stake):
+        logging.info(f"Executando {acao} para {key}")
+
+        # Obter preço médio e quantidade total de compras
+        preco_medio_compra, quantidade_total, taxas_total_compras = (
+            self.calcular_preco_medio_e_quantidade_banco(key)
+        )
+
+        # Obter quantidade restante de vendas
+        quantidade_restante = self.database_manager.obter_quantidade_restante(key)
+
+        if quantidade_restante is None:
+            quantidade_restante = quantidade_total
+
+        if quantidade_restante == 0:
+            logging.warning(f"Quantidade total para venda de {key} é zero.")
+            return
+
+        # Vender 25% da quantidade restante
+        quantidade_venda_parcial = quantidade_restante * 0.25
+        quantidade_ajustada = self._ajustar_quantidade_para_notional(
+            key, quantidade_venda_parcial
+        )
+
+        if quantidade_ajustada <= 0:
+            logging.error(
+                f"Quantidade ajustada para {key} é insuficiente. Operação de venda parcial cancelada."
+            )
+            return
+
+        # Executar a venda parcial
+        resultado = self.trade_executor.executar_ordem(
+            key, quantidade_ajustada, "sell", venda_parcial=True, moeda_venda=value
+        )
+
+        if resultado is None:
+            logging.error(f"Falha ao executar a ordem de venda para {key}.")
+        else:
+            preco_venda_real, taxa = resultado
+            quantidade_restante -= (
+                quantidade_ajustada  # Atualiza a quantidade total restante
+            )
+
+            # Atualizar a quantidade restante no banco de dados
+            self.database_manager.atualizar_quantidade_restante(
+                key, quantidade_restante
+            )
+
+            # Notificar a venda parcial
+            self.registrar_e_notificar_operacao(
+                key,
+                "VENDA PARCIAL",
+                float(quantidade_ajustada),
+                preco_venda_real,
+                float(quantidade_ajustada) * preco_venda_real,
+                taxa,
+                1,
+            )
+
+        time.sleep(10)  # Intervalo entre vendas parciais
