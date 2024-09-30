@@ -607,3 +607,36 @@ class TradingBot:
         logger.info(
             f"{tipo_operacao} de {quantidade} {symbol} a {preco} USDT (Total: {valor_total} USDT)"
         )
+
+    def executar_estrategia_compra(self):
+        for key, value in self.symbols.items():
+            try:
+                # Obter dados de mercado
+                df = self.data_handler.obter_dados_mercado(key)
+                if df.empty:
+                    continue
+
+                # Calcular indicadores
+                df = self.indicator_calculator.calcular_indicadores(df)
+
+                # Analisar sentimento
+                sentimento = self.sentiment_analyzer.analisar_sentimento(value)
+
+                # Determinar se deve comprar
+                acao = self.estrategia_trading(df, sentimento)
+
+                if acao == "Comprar":
+                    stake = self.calcular_stake(key)
+                    if stake is None:
+                        logger.error(f"Stake não foi calculado para {key}.")
+                        continue
+
+                    # Executar compra
+                    preco_compra = self.comprar(key, stake)
+                    logger.info(f"Compra executada para {key}: {preco_compra}")
+
+            except Exception as e:
+                traceback.print_exc()
+                logger.error(f"Erro inesperado no símbolo {key}: {e}")
+
+        self.database_manager.fechar_conexao()
