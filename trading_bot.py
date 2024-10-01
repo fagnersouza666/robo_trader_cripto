@@ -297,7 +297,7 @@ class TradingBot:
                 # Atualizar o resumo financeiro geral
                 valor_inicial = self.database_manager.obter_valor_inicial()
                 valor_atual = (
-                    self.database_manager.obter_valor_total_atual()
+                    self.database_manager.obter_valor_atual()
                 )  # soma de todas as moedas
                 porcentagem_geral = (
                     (valor_atual - valor_inicial) / valor_inicial

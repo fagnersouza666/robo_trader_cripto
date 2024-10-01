@@ -220,3 +220,17 @@ class DatabaseManager:
         if resultado:
             return resultado[0], resultado[1]
         return None, None
+
+    def obter_valor_inicial(self):
+        self.cursor.execute("SELECT valor_inicial FROM resumo_financeiro")
+        resultado = self.cursor.fetchone()
+        if resultado:
+            return resultado[0]
+        return None
+
+    def obter_valor_atual(self):
+        self.cursor.execute("SELECT valor_atual FROM resumo_financeiro")
+        resultado = self.cursor.fetchone()
+        if resultado:
+            return resultado[0]
+        return None
