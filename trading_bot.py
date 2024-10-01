@@ -209,95 +209,104 @@ class TradingBot:
 
         self.database_manager.fechar_conexao()
 
-    def vender(self, key: str, value: str, acao: str, stake: str) -> None:
-        logger.info(f"Ação: {acao}")
+    def vender(self, symbol: str, reason: str, action: str, stake: str) -> None:
+        """
+        Executa a venda de um ativo, atualiza o banco de dados e notifica via Telegram.
 
-        # Obter preço médio e quantidade total de compras
-        preco_medio_compra, quantidade_total, taxas_total_compras = (
-            self.calcular_preco_medio_e_quantidade_banco(key)
-        )
+        :param symbol: Símbolo do ativo a ser vendido.
+        :param reason: Razão ou descrição da venda.
+        :param action: Tipo de ação ("Vender" ou "VenderParcial").
+        :param stake: Quantidade a ser vendida.
+        """
+        logger.info(f"Ação: {action} para {symbol}")
 
-        logger.info(
-            f"Preço médio de compra: {preco_medio_compra}, Quantidade total: {quantidade_total}, Taxas totais: {taxas_total_compras}, moeda: {key}"
-        )
-
-        if quantidade_total == 0:
-            logger.warning(f"Quantidade total para venda de {key} é zero.")
-            return
-
-        # Ajusta a quantidade para garantir que o valor notional seja suficiente
-        quantidade_total = self._ajustar_quantidade_para_notional(key, quantidade_total)
-
-        if quantidade_total <= 0:
-            logger.error(
-                f"Quantidade ajustada para {key} é zero ou negativa. Operação de venda cancelada."
+        try:
+            # Obter preço médio e quantidade total de compras
+            preco_medio_compra, quantidade_total, taxas_total_compras = (
+                self.calcular_preco_medio_e_quantidade_banco(symbol)
             )
-            return
 
-        # Executar a venda de toda a quantidade acumulada
-        resultado = self.trade_executor.executar_ordem(
-            symbol=key,
-            quantidade=str(quantidade_total),
-            side="sell",
-            is_test=acao == "VenderParcial",
-            reason=value,
-        )
+            logger.info(
+                f"Preço médio de compra: {preco_medio_compra}, Quantidade total: {quantidade_total}, "
+                f"Taxas totais: {taxas_total_compras}, símbolo: {symbol}"
+            )
 
-        if not resultado:
-            logger.error(f"Falha ao executar a ordem de venda para {key}.")
-            return
+            if quantidade_total == 0:
+                logger.warning(f"Quantidade total para venda de {symbol} é zero.")
+                return
 
-        preco_venda_real, taxa = resultado
+            # Ajusta a quantidade para garantir que o valor notional seja suficiente
+            quantidade_total_ajustada = self._ajustar_quantidade_para_notional(
+                symbol, quantidade_total
+            )
 
-        valor_total = float(stake) * preco_venda_real
-        self.registrar_e_notificar_operacao(
-            symbol=key,
-            tipo_operacao="VENDA",
-            quantidade=float(stake),
-            preco=preco_venda_real,
-            valor_total=valor_total,
-            taxa=taxa,
-            vendido=1,
-        )
-        self.database_manager.atualizar_compras(key)
+            if quantidade_total_ajustada <= 0:
+                logger.error(
+                    f"Quantidade ajustada para {symbol} é zero ou negativa. Operação de venda cancelada."
+                )
+                return
 
-        valor_total_vendas = quantidade_total * preco_venda_real
-        valor_total_compras = quantidade_total * preco_medio_compra
-        ganho_total = valor_total_vendas - valor_total_compras - taxas_total_compras
+            # Executar a venda de toda a quantidade acumulada
+            resultado = self.trade_executor.executar_ordem(
+                symbol=symbol,
+                quantidade=str(quantidade_total_ajustada),
+                side="sell",
+                is_test=(action == "VenderParcial"),
+                reason=reason,
+            )
 
-        # Calcular porcentagem de ganho
-        porcentagem_ganho = (
-            (ganho_total / valor_total_compras) * 100 if valor_total_compras else 0.0
-        )
+            if not resultado:
+                logger.error(f"Falha ao executar a ordem de venda para {symbol}.")
+                return
 
-        # Registrar no banco de dados
-        data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.database_manager.registrar_ganhos(
-            data_hora,
-            key,
-            valor_total_compras,
-            valor_total_vendas,
-            taxas_total_compras,
-            ganho_total,
-            porcentagem_ganho,
-            taxa,
-        )
+            preco_venda_real, taxa = resultado
 
-        # Atualizar o resumo financeiro geral
-        valor_inicial = self.database_manager.obter_valor_inicial()
-        valor_atual = self.database_manager.obter_valor_atual()
-        porcentagem_geral = (
-            ((valor_atual - valor_inicial) / valor_inicial) * 100
-            if valor_inicial
-            else 0.0
-        )
-        self.database_manager.atualizar_resumo_financeiro(
-            valor_inicial, valor_atual, porcentagem_geral
-        )
+            valor_total = quantidade_total_ajustada * preco_venda_real
+            self.registrar_e_notificar_operacao(
+                symbol=symbol,
+                tipo_operacao="VENDA",
+                quantidade=quantidade_total_ajustada,
+                preco=preco_venda_real,
+                valor_total=valor_total,
+                taxa=taxa,
+                vendido=1,
+            )
 
-        logger.info(
-            f"Venda registrada para {key}: Ganho de {ganho_total} USDT, porcentagem de {porcentagem_ganho:.2f}%"
-        )
+            # Atualizar transações de compra como vendidas
+            self.database_manager.atualizar_compras(symbol)
+
+            # Calcular ganhos
+            ganho_total, porcentagem_ganho = self._calcular_ganhos(
+                quantidade_total_ajustada,
+                preco_medio_compra,
+                preco_venda_real,
+                taxas_total_compras,
+                taxa,
+            )
+
+            # Registrar ganhos no banco de dados
+            data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self.database_manager.registrar_ganhos(
+                data_hora,
+                symbol,
+                preco_medio_compra * quantidade_total_ajustada,
+                valor_total,
+                taxas_total_compras + taxa,
+                ganho_total,
+                porcentagem_ganho,
+                taxa,
+            )
+
+            # Atualizar o resumo financeiro geral
+            self._atualizar_resumo_financeiro()
+
+            logger.info(
+                f"Venda registrada para {symbol}: Ganho de {ganho_total:.2f} USDT, porcentagem de {porcentagem_ganho:.2f}%"
+            )
+
+        except Exception as e:
+            logger.error(f"Erro ao executar venda para {symbol}: {e}")
+            logger.debug(traceback.format_exc())
 
     def _ajustar_quantidade_para_notional(
         self, symbol: str, quantidade: float, min_notional_padrao: float = 10.0
@@ -374,6 +383,51 @@ class TradingBot:
             logger.error(f"Erro ao verificar o saldo para a moeda {moeda}: {e}")
             logger.debug(traceback.format_exc())
             return 0.0
+
+    def _calcular_ganhos(
+        self,
+        quantidade: float,
+        preco_medio_compra: float,
+        preco_venda: float,
+        taxas_compras: float,
+        taxa_venda: float,
+    ) -> Tuple[float, float]:
+        """
+        Calcula o ganho total e a porcentagem de ganho.
+
+        :param quantidade: Quantidade vendida.
+        :param preco_medio_compra: Preço médio de compra.
+        :param preco_venda: Preço de venda.
+        :param taxas_compras: Total de taxas das compras.
+        :param taxa_venda: Taxa da venda.
+        :return: Tuple contendo o ganho total e a porcentagem de ganho.
+        """
+        valor_total_compras = preco_medio_compra * quantidade
+        valor_total_vendas = preco_venda * quantidade
+        ganho_total = (
+            valor_total_vendas - valor_total_compras - taxas_compras - taxa_venda
+        )
+
+        porcentagem_ganho = (
+            (ganho_total / valor_total_compras) * 100 if valor_total_compras else 0.0
+        )
+
+        return ganho_total, porcentagem_ganho
+
+    def _atualizar_resumo_financeiro(self) -> None:
+        """
+        Atualiza o resumo financeiro geral no banco de dados.
+        """
+        valor_inicial = self.database_manager.obter_valor_inicial()
+        valor_atual = self.database_manager.obter_valor_atual()
+        porcentagem_geral = (
+            ((valor_atual - valor_inicial) / valor_inicial) * 100
+            if valor_inicial
+            else 0.0
+        )
+        self.database_manager.atualizar_resumo_financeiro(
+            valor_inicial, valor_atual, porcentagem_geral
+        )
 
     def comprar(self, key: str, stake: str) -> Optional[float]:
         logger.info(f"Executando compra para {key}")
