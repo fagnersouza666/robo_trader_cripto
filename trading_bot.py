@@ -250,7 +250,7 @@ class TradingBot:
             resultado = self.trade_executor.executar_ordem(
                 symbol=symbol,
                 quantidade=str(quantidade_total_ajustada),
-                side="sell",
+                ordem_tipo="sell",
                 is_test=(action == "VenderParcial"),
                 reason=reason,
             )
@@ -432,7 +432,7 @@ class TradingBot:
     def comprar(self, key: str, stake: str) -> Optional[float]:
         logger.info(f"Executando compra para {key}")
         resultado = self.trade_executor.executar_ordem(
-            symbol=key, quantidade=stake, side="buy", is_test=False
+            symbol=key, quantidade=stake, ordem_tipo="buy", is_test=False
         )
 
         if not resultado:
