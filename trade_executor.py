@@ -115,6 +115,12 @@ class TradeExecutor:
             step_size = float(lot_size["stepSize"])
 
             logging.info(f"quantidade: {quantidade}, step_size: {step_size}")
+            logging.info(
+                f"Tipos - quantidade: {type(quantidade)}, step_size: {type(step_size)}"
+            )
+
+            quantidade = float(quantidade)
+            step_size = float(step_size)
 
             # Ajuste a quantidade com base no step size
             quantidade_ajustada = round(quantidade // step_size * step_size, 8)
