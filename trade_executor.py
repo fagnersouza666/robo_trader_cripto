@@ -135,8 +135,8 @@ class TradeExecutor:
 
     def _ajustar_quantidade(self, quantidade: float, step_size: float):
         """Ajusta a quantidade para o incremento permitido pelo filtro."""
-        quantidade = float(quantidade)
-        step_size = float(step_size)
+        quantidade = quantidade
+        step_size = step_size
 
         # Calcula a quantidade ajustada
         quantidade_ajustada = round(quantidade - (quantidade % step_size), 8)
