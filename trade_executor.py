@@ -270,7 +270,7 @@ class TradeExecutor:
             if venda_parcial:
                 quantidade = quantidade * 0.5
 
-            quantidade_maxima = self.verificar_saldo_moedas(moeda_venda)
+            quantidade_maxima = self.verificar_saldo_moedas(symbol)
 
             if quantidade_maxima == 0:
                 quantidade_maxima = quantidade
