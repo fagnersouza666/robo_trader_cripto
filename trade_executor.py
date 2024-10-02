@@ -180,7 +180,6 @@ class TradeExecutor:
         quantidade: float,
         ordem_tipo: str,
         venda_parcial: bool = False,
-        moeda_venda: str = None,
     ):
 
         # Obtém as restrições de LOT_SIZE e MIN_NOTIONAL para o par

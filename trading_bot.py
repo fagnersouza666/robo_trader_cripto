@@ -252,7 +252,6 @@ class TradingBot:
                 quantidade=str(quantidade_total_ajustada),
                 ordem_tipo="sell",
                 venda_parcial=(action == "VenderParcial"),
-                reason=reason,
             )
 
             if not resultado:
