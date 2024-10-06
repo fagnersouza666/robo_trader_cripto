@@ -348,11 +348,29 @@ class TradeExecutor:
                 f"Executando ordem de venda para {symbol} com quantidade {quantidade}"
             )
 
-            # Executa a ordem de venda no mercado
-            ordem_venda = self.client.order_market_sell(
-                symbol=symbol, quantity=quantidade
-            )
-            logger.info(f"Ordem de venda executada para {symbol}: {ordem_venda}")
+            try:
+                # Executa a ordem de venda no mercado
+                ordem_venda = self.client.order_market_sell(
+                    symbol=symbol, quantity=quantidade
+                )
+                logger.info(f"Ordem de venda executada para {symbol}: {ordem_venda}")
+            except BinanceAPIException as e:
+                saldo = self.verificar_saldo_moedas(symbol)
+                preco_atual = float(
+                    self.client.get_symbol_ticker(symbol=symbol)["price"]
+                )
+                quantidade = preco_atual / saldo
+
+                ajustar_quantidade = self._ajustar_quantidade_venda(symbol, quantidade)
+                logger.info(
+                    f"preco_atual: {preco_atual} | saldo: {saldo} | quantidade: {quantidade} | ajustar_quantidade: {ajustar_quantidade}"
+                )
+
+                ordem_venda = self.client.order_market_sell(
+                    symbol=symbol, quantity=ajustar_quantidade
+                )
+
+                logger.info(f"Ordem de venda executada para {symbol}: {ordem_venda} ")
 
             # Obtém o preço de venda
             preco_venda = float(ordem_venda["fills"][0]["price"])
@@ -365,8 +383,8 @@ class TradeExecutor:
 
             return preco_venda, taxa
 
-        except BinanceAPIException as e:
-            logger.error(f"Erro ao executar ordem de venda: {e}")
+        except Exception as e2:
+            logger.error(f"Erro ao executar ordem de venda: {e2}")
             return None
 
     def _configurar_stop_loss(
