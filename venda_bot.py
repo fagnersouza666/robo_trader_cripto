@@ -4,6 +4,8 @@ import ast
 from trading_bot import TradingBot
 from dotenv import load_dotenv
 from binance.client import Client
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
 
 # Configuração do logging
 logging.basicConfig(

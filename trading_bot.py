@@ -17,6 +17,10 @@ from sentiment_analyzer import SentimentAnalyzer
 from telegram_notifier import TelegramNotifier
 from trade_executor import TradeExecutor
 
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -261,6 +265,7 @@ class TradingBot:
             preco_venda_real, taxa = resultado
 
             valor_total = quantidade_total_ajustada * preco_venda_real
+
             self.registrar_e_notificar_operacao(
                 symbol=symbol,
                 tipo_operacao="VENDA",
@@ -270,6 +275,19 @@ class TradingBot:
                 taxa=taxa,
                 vendido=1,
             )
+
+            # Analisar o desempenho da venda
+            desempenho, diferenca = self.analisar_desempenho_venda(
+                symbol, preco_venda_real
+            )
+
+            # Enviar relatório de desempenho via Telegram
+            relatorio = (
+                f"🔴 Venda realizada para {symbol}\n"
+                f"Preço de venda: {preco_venda_real:.2f} USDT\n"
+                f"Após a venda, o preço {desempenho} {abs(diferenca):.2f} USDT."
+            )
+            self.telegram_notifier.enviar_mensagem(relatorio)
 
             # Atualizar transações de compra como vendidas
             self.database_manager.atualizar_compras(symbol)
@@ -463,6 +481,9 @@ class TradingBot:
             if indicadores is None:
                 return "Esperar", 0.0
 
+            # Previsão de preço futuro usando ML
+            preco_previsto = self.prever_preco_futuro(df, symbol)
+
             rsi = indicadores["rsi"]
             rsi_anterior = indicadores["rsi_anterior"]
             momentum = indicadores["momentum"]
@@ -470,6 +491,10 @@ class TradingBot:
             bb_upper = indicadores["bb_upper"]
             volume_atual = indicadores["volume_atual"]
             volume_medio = indicadores["volume_medio"]
+
+            # Lógica de venda se a previsão indicar queda no preço futuro
+            if preco_previsto < ultimo_preco:
+                return "VenderTotal", ultimo_preco
 
             # Venda parcial se RSI estiver sobrecomprado e volume acima da média
             if rsi > 70 and volume_atual > volume_medio * 1.2:
@@ -489,6 +514,38 @@ class TradingBot:
             logger.error(f"Erro na estratégia de venda reversão para {symbol}: {e}")
             logger.debug(traceback.format_exc())
             return "Esperar", 0.0
+
+    def prever_preco_futuro(self, df, symbol):
+        """
+        Usa regressão linear para prever o preço futuro com base nos dados históricos de mercado.
+        """
+        # Selecionar colunas de interesse para o modelo (ex: preço de fechamento, volume, etc.)
+        df["timestamp"] = df["timestamp"].astype(
+            int
+        )  # Converter timestamp para inteiro
+        X = df[["timestamp"]]  # Variável independente (tempo)
+        y = df["close"]  # Variável dependente (preço)
+
+        # Dividir os dados em conjuntos de treinamento e teste
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42
+        )
+
+        # Criar o modelo de regressão linear
+        modelo = LinearRegression()
+
+        # Treinar o modelo
+        modelo.fit(X_train, y_train)
+
+        # Prever o preço futuro (baseado no próximo timestamp)
+        proximo_timestamp = df["timestamp"].max() + (
+            df["timestamp"].iloc[-1] - df["timestamp"].iloc[-2]
+        )
+        preco_previsto = modelo.predict([[proximo_timestamp]])
+
+        logger.info(f"Previsão de preço futuro para {symbol}: {preco_previsto[0]} USDT")
+
+        return preco_previsto[0]
 
     def estrategia_trading(self, df: Any, sentimento: str) -> str:
         try:
@@ -756,3 +813,24 @@ class TradingBot:
             volume_atual,
             volume_medio,
         )
+
+    def ajustar_take_profit(self, preco_atual, preco_compra, lucro_desejado=1.10):
+        """
+        Ajusta o take profit para garantir um lucro desejado (ex: 10%)
+        """
+        preco_take_profit = preco_compra * lucro_desejado  # Exemplo: 10% de lucro
+        if preco_atual >= preco_take_profit:
+            return True  # Aciona venda se o preço atingir o take profit
+        return False
+
+    def analisar_desempenho_venda(self, symbol, preco_venda):
+        """
+        Analisa o desempenho da venda verificando o comportamento do preço após a venda.
+        """
+        # Obter o preço atual para análise
+        preco_atual = float(self.client.get_symbol_ticker(symbol=symbol)["price"])
+        diferenca = preco_atual - preco_venda
+        desempenho = "subiu" if diferenca > 0 else "caiu"
+
+        logger.info(f"Após a venda, o preço {desempenho} {abs(diferenca):.2f} USDT.")
+        return desempenho, diferenca
