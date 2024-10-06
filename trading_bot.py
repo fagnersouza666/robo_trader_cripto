@@ -214,6 +214,21 @@ class TradingBot:
                 )
                 return
 
+            controle_compra = (
+                float(preco_medio_compra) + float(taxas_total_compras) * 1.005
+            )
+
+            controle_compra = float(controle_compra)
+
+            preco_atual = float(self.client.get_symbol_ticker(symbol=symbol)["price"])
+            preco_atual = float(preco_atual)
+
+            if controle_compra >= preco_atual:
+                logger.error(
+                    f"Preco compra > preco atual para {symbol}. Operação de venda cancelada."
+                )
+                return
+
             # Executar a venda de toda a quantidade acumulada
             resultado = self.trade_executor.executar_ordem(
                 symbol=symbol,
