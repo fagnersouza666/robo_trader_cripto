@@ -87,7 +87,7 @@ class TradingBot:
             f"Preço médio: {preco_medio}, Quantidade total: {quantidade_total}, Taxas totais: {taxas_total}"
         )
 
-        if quantidade_total == 0.0:
+        if quantidade_total == 0.0 or quantidade_total is None:
             return 0.0, 0.0, 0.0  # Sem compras registradas
 
         return preco_medio, quantidade_total, taxas_total
