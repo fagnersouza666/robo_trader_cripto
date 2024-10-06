@@ -225,7 +225,7 @@ class TradingBot:
 
             if controle_compra >= preco_atual:
                 logger.error(
-                    f"Preco compra > preco atual para {symbol}. Operação de venda cancelada."
+                    f"Preco compra({controle_compra}) > preco atual({preco_atual}) para {symbol}. Operação de venda cancelada."
                 )
                 return
 
@@ -262,9 +262,12 @@ class TradingBot:
 
             # Enviar relatório de desempenho via Telegram
             relatorio = (
-                f"🔴 Venda realizada para {symbol}\n"
+                f"Venda realizada para {symbol}\n"
                 f"Preço de venda: {preco_venda_real:.2f} USDT\n"
-                f"Após a venda, o preço {desempenho} {abs(diferenca):.2f} USDT."
+                f"Média de preço de compra: {preco_medio_compra:.2f} USDT\n"
+                f"Taxa total de compras: {taxas_total_compras:.2f} USDT\n"
+                f"Taxa de venda: {taxa:.2f} USDT\n"
+                f"Lucro de {preco_venda_real - (preco_medio_compra + taxas_total_compras + taxa):.2f} USDT\n"
             )
             self.telegram_notifier.enviar_mensagem(relatorio)
 
@@ -415,7 +418,7 @@ class TradingBot:
         Atualiza o resumo financeiro geral no banco de dados.
         """
         valor_inicial = self.database_manager.obter_valor_inicial()
-        valor_atual = self.database_manager.obter_valor_atual()
+        valor_atual = self.database_manager.obter_valor_atual_lucro()
         porcentagem_geral = (
             ((valor_atual - valor_inicial) / valor_inicial) * 100
             if valor_inicial

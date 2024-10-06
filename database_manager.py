@@ -234,3 +234,12 @@ class DatabaseManager:
         if resultado:
             return resultado[0]
         return None
+
+    def obter_valor_atual_lucro(self):
+        self.cursor.execute(
+            "SELECT sum(ganhos) - sum(taxa_compra) - sum(taxa_venda) FROM ganhos"
+        )
+        resultado = self.cursor.fetchone()
+        if resultado:
+            return resultado[0]
+        return None
