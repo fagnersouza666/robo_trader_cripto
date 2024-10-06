@@ -34,11 +34,13 @@ class TradingBot:
         symbols: Dict[str, str],
         casas_decimais: Dict[str, int],
         min_notional: Dict[str, float],
-        interval: str = Client.KLINE_INTERVAL_15MINUTE,
+        interval_compra: str = Client.KLINE_INTERVAL_15MINUTE,
+        interval_venda: str = Client.KLINE_INTERVAL_1MINUTE,
     ) -> None:
         self.client = Client(api_key=binance_api_key, api_secret=binance_secret_key)
         self.client.time_sync = True
-        self.data_handler = DataHandler(self.client, interval)
+        self.data_handler_compra = DataHandler(self.client, interval_compra)
+        self.data_handler_venda = DataHandler(self.client, interval_venda)
         self.indicator_calculator = IndicatorCalculator()
         self.sentiment_analyzer = SentimentAnalyzer(
             openai_api_key, cryptocompare_api_key
@@ -174,44 +176,6 @@ class TradingBot:
         except Exception as e:
             logger.error(f"Erro ao ajustar quantidade para {symbol}: {e}")
             raise
-
-    def executar_estrategia(self) -> None:
-        for key, value in self.symbols.items():
-            try:
-                # Obter dados de mercado
-                df = self.data_handler.obter_dados_mercado(key)
-                if df.empty:
-                    continue
-
-                # Calcular indicadores
-                df = self.indicator_calculator.calcular_indicadores(df)
-
-                acao, _ = self.estrategia_venda_reversao(df, key)
-
-                # Analisar sentimento
-                sentimento = self.sentiment_analyzer.analisar_sentimento(value)
-
-                if acao == "Esperar":
-                    # Determinar ação de trading (comprar, vender, ou esperar)
-                    acao = self.estrategia_trading(df, sentimento)
-
-                # Executar ação e registrar a operação no banco de dados
-                stake = self.calcular_stake(key)
-                if not stake:
-                    logger.error(f"Stake não foi calculado para {key}.")
-                    continue  # Pula para o próximo símbolo se stake for None
-
-                if acao == "Comprar":
-                    self.comprar(key, stake)
-
-                elif acao in ("Vender", "VenderParcial"):
-                    self.vender(key, value, acao, stake)
-
-            except Exception as e:
-                logger.error(f"Erro inesperado no símbolo {key}: {e}")
-                logger.debug(traceback.format_exc())
-
-        self.database_manager.fechar_conexao()
 
     def vender(self, symbol: str, reason: str, action: str, stake: str) -> None:
         """
@@ -683,7 +647,7 @@ class TradingBot:
         for key, value in self.symbols.items():
             try:
                 # Obter dados de mercado
-                df = self.data_handler.obter_dados_mercado(key)
+                df = self.data_handler_compra.obter_dados_mercado(key)
                 if df.empty:
                     continue
 
@@ -717,7 +681,7 @@ class TradingBot:
         for key, value in self.symbols.items():
             try:
                 # Obter dados de mercado
-                df = self.data_handler.obter_dados_mercado(key)
+                df = self.data_handler_venda.obter_dados_mercado(key)
                 if df.empty:
                     continue
 
