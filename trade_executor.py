@@ -191,6 +191,8 @@ class TradeExecutor:
         venda_parcial: bool = False,
     ):
 
+        quantidade = float(quantidade)
+
         # Obtém as restrições de LOT_SIZE e MIN_NOTIONAL para o par
         lot_size, min_notional = self._get_lot_size_and_min_notional(symbol)
 
@@ -272,6 +274,7 @@ class TradeExecutor:
 
         elif ordem_tipo == "sell":
 
+            quantidade = float(quantidade)
             preco_atual = float(self.client.get_symbol_ticker(symbol=symbol)["price"])
 
             # Se for uma venda parcial, ajusta a quantidade para 50%
