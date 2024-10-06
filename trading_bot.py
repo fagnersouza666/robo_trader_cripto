@@ -83,6 +83,10 @@ class TradingBot:
             self.database_manager.obter_transacoes_totais(symbol, tipo="COMPRA")
         )
 
+        logger.info(
+            f"Preço médio: {preco_medio}, Quantidade total: {quantidade_total}, Taxas totais: {taxas_total}"
+        )
+
         if quantidade_total == 0.0:
             return 0.0, 0.0, 0.0  # Sem compras registradas
 
