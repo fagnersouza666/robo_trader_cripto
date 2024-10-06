@@ -202,7 +202,7 @@ class DatabaseManager:
             params.append(tipo)
 
         self.cursor.execute(query, params)
-        transacoes = self.cursor.fetchall()
+        transacoes = self.cursor.fetchone()
 
         if transacoes:
             return transacoes[0], transacoes[1], transacoes[2]
