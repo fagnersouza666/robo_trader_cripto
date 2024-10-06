@@ -84,18 +84,14 @@ class TradingBot:
         quantidade_total = 0.0
         taxas_total = 0.0
 
-        for transacao in transacoes:
-            quantidade = transacao["quantidade"]
-            preco = transacao["preco"]
-            taxa = transacao["taxa"]
-            quantidade_total += quantidade
-            valor_total_compras += quantidade * preco
-            taxas_total += taxa
+        quantidade_total = transacoes[1]
 
         if quantidade_total == 0.0:
             return 0.0, 0.0, 0.0  # Sem compras registradas
 
-        preco_medio = valor_total_compras / quantidade_total
+        preco_medio = transacoes[0]
+        taxas_total = transacoes[2]
+
         return preco_medio, quantidade_total, taxas_total
 
     def ajustar_quantidade(
