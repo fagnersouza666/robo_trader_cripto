@@ -190,123 +190,140 @@ class TradeExecutor:
         ordem_tipo: str,
         venda_parcial: bool = False,
     ):
+        try:
 
-        quantidade = float(quantidade)
+            quantidade = float(quantidade)
 
-        # Obtém as restrições de LOT_SIZE e MIN_NOTIONAL para o par
-        lot_size, min_notional = self._get_lot_size_and_min_notional(symbol)
+            # Obtém as restrições de LOT_SIZE e MIN_NOTIONAL para o par
+            lot_size, min_notional = self._get_lot_size_and_min_notional(symbol)
 
-        if ordem_tipo == "buy":
-            # Verifica e ajusta a quantidade de acordo com o step_size
-            quantidade_ajustada_str = self._ajustar_quantidade(
-                quantidade, lot_size["step_size"]
-            )
-
-            # Calcula o valor da ordem (preço * quantidade)
-            preco_atual = float(self.client.get_symbol_ticker(symbol=symbol)["price"])
-            quantidade_ajustada = float(quantidade_ajustada_str)
-            notional = preco_atual * quantidade_ajustada
-
-            # Verifica se o valor (notional) está acima do mínimo exigido
-            if notional < min_notional:
-                logger.error(
-                    f"Valor da ordem ({notional}) é menor que o valor mínimo permitido ({min_notional}) para {symbol}."
-                )
-
-                # Forçar a quantidade ajustada para garantir que o notional seja maior que o mínimo
-                quantidade_ajustada = (
-                    min_notional / preco_atual
-                ) * 1.2  # Adiciona uma margem de 20%
-
-                quantidade_ajustada_str = "{:f}".format(quantidade_ajustada)
+            if ordem_tipo == "buy":
+                # Verifica e ajusta a quantidade de acordo com o step_size
                 quantidade_ajustada_str = self._ajustar_quantidade(
-                    quantidade_ajustada_str, lot_size["step_size"]
+                    quantidade, lot_size["step_size"]
                 )
 
-                # Recalcular o notional após o ajuste de quantidade
-                notional = preco_atual * float(quantidade_ajustada_str)
+                # Calcula o valor da ordem (preço * quantidade)
+                preco_atual = float(
+                    self.client.get_symbol_ticker(symbol=symbol)["price"]
+                )
+                quantidade_ajustada = float(quantidade_ajustada_str)
+                notional = float(preco_atual * quantidade_ajustada)
 
+                notional = float(notional)
+                min_notional = float(min_notional)
+                preco_atual = float(preco_atual)
+
+                # Verifica se o valor (notional) está acima do mínimo exigido
                 if notional < min_notional:
                     logger.error(
-                        f"Mesmo após ajuste, o valor ({notional}) é menor que o mínimo exigido ({min_notional}) para {symbol}."
+                        f"Valor da ordem ({notional}) é menor que o valor mínimo permitido ({min_notional}) para {symbol}."
+                    )
+
+                    # Forçar a quantidade ajustada para garantir que o notional seja maior que o mínimo
+                    quantidade_ajustada = (
+                        min_notional / preco_atual
+                    ) * 1.2  # Adiciona uma margem de 20%
+
+                    quantidade_ajustada_str = "{:f}".format(quantidade_ajustada)
+                    quantidade_ajustada_str = self._ajustar_quantidade(
+                        quantidade_ajustada_str, lot_size["step_size"]
+                    )
+
+                    # Recalcular o notional após o ajuste de quantidade
+                    notional = float(preco_atual) * float(quantidade_ajustada_str)
+
+                    if notional < min_notional:
+                        logger.error(
+                            f"Mesmo após ajuste, o valor ({notional}) é menor que o mínimo exigido ({min_notional}) para {symbol}."
+                        )
+                        return None
+
+                # Verifique se a quantidade ajustada está acima de minQty
+                if float(quantidade_ajustada_str) < float(lot_size["min_qty"]):
+                    logger.error(
+                        f"Quantidade ajustada ({quantidade_ajustada_str}) está abaixo do tamanho mínimo de lote permitido ({lot_size['min_qty']}) para {symbol}."
+                    )
+                    quantidade_ajustada_str = "{:0.8f}".format(lot_size["min_qty"])
+                    logger.info(
+                        f"Quantidade ajustada para o mínimo de lote permitido: {quantidade_ajustada_str}"
+                    )
+
+                saldo_disponivel = self.verificar_saldo("USDT")
+                saldo_disponivel = float(saldo_disponivel)
+
+                # Se o notional ajustado for maior que o saldo disponível, ajuste a quantidade novamente
+                if notional > saldo_disponivel:
+                    # Ajustar a quantidade com base no saldo disponível
+                    quantidade_ajustada = saldo_disponivel / preco_atual * 1.001
+                    quantidade_ajustada_str = self._ajustar_quantidade(
+                        quantidade_ajustada, lot_size["step_size"]
+                    )
+                    notional = preco_atual * float(quantidade_ajustada_str)
+
+                    logger.info(
+                        f"Quantidade ajustada para o saldo disponível: {quantidade_ajustada_str}, Notional: {notional}"
+                    )
+
+                # Verificar se o notional após o ajuste ainda é inferior ao mínimo permitido
+                if notional < min_notional:
+                    logger.error(
+                        f"Saldo insuficiente para executar a ordem. Notional ({notional}) é menor que o mínimo permitido ({min_notional})."
                     )
                     return None
 
-            # Verifique se a quantidade ajustada está acima de minQty
-            if float(quantidade_ajustada_str) < lot_size["min_qty"]:
-                logger.error(
-                    f"Quantidade ajustada ({quantidade_ajustada_str}) está abaixo do tamanho mínimo de lote permitido ({lot_size['min_qty']}) para {symbol}."
-                )
-                quantidade_ajustada_str = "{:0.8f}".format(lot_size["min_qty"])
-                logger.info(
-                    f"Quantidade ajustada para o mínimo de lote permitido: {quantidade_ajustada_str}"
+                # Execução da ordem após as verificações
+
+                resultado = self._executar_ordem_buy(
+                    symbol, quantidade_ajustada_str, 2, 4
                 )
 
-            saldo_disponivel = self.verificar_saldo("USDT")
+                logger.info(f"Resultado da execução da ordem de compra: {resultado}")
 
-            # Se o notional ajustado for maior que o saldo disponível, ajuste a quantidade novamente
-            if notional > saldo_disponivel:
-                # Ajustar a quantidade com base no saldo disponível
-                quantidade_ajustada = saldo_disponivel / preco_atual * 1.001
-                quantidade_ajustada_str = self._ajustar_quantidade(
-                    quantidade_ajustada, lot_size["step_size"]
-                )
-                notional = preco_atual * float(quantidade_ajustada_str)
+                return resultado
 
-                logger.info(
-                    f"Quantidade ajustada para o saldo disponível: {quantidade_ajustada_str}, Notional: {notional}"
+            elif ordem_tipo == "sell":
+
+                quantidade = float(quantidade)
+                preco_atual = float(
+                    self.client.get_symbol_ticker(symbol=symbol)["price"]
                 )
 
-            # Verificar se o notional após o ajuste ainda é inferior ao mínimo permitido
-            if notional < min_notional:
-                logger.error(
-                    f"Saldo insuficiente para executar a ordem. Notional ({notional}) é menor que o mínimo permitido ({min_notional})."
-                )
+                # Se for uma venda parcial, ajusta a quantidade para 50%
+                if venda_parcial:
+                    quantidade = quantidade * 0.5
+
+                quantidade_maxima = float(self.verificar_saldo_moedas(symbol))
+
+                if quantidade_maxima == 0:
+                    quantidade_maxima = quantidade
+
+                if quantidade > quantidade_maxima:
+                    quantidade = quantidade_maxima
+
+                logging.info(f"Quantidade1: {quantidade}")
+
+                quantidade = self._ajustar_quantidade_venda(symbol, quantidade)
+
+                logging.info(f"Quantidade2: {quantidade}")
+
+                quantidade = "{:f}".format(quantidade)
+
+                logging.info(f"Quantidade3: {quantidade}")
+
+                retorno = self._executar_ordem_sell(symbol, quantidade, 0, 0)
+
+                logger.info(f"Resultado da execução da ordem de venda: {retorno}")
+
+                return retorno
+
+            else:
+                logger.error(f"Tipo de ordem inválido: {ordem_tipo}")
                 return None
 
-            # Execução da ordem após as verificações
-
-            resultado = self._executar_ordem_buy(symbol, quantidade_ajustada_str, 2, 4)
-
-            logger.info(f"Resultado da execução da ordem de compra: {resultado}")
-
-            return resultado
-
-        elif ordem_tipo == "sell":
-
-            quantidade = float(quantidade)
-            preco_atual = float(self.client.get_symbol_ticker(symbol=symbol)["price"])
-
-            # Se for uma venda parcial, ajusta a quantidade para 50%
-            if venda_parcial:
-                quantidade = quantidade * 0.5
-
-            quantidade_maxima = float(self.verificar_saldo_moedas(symbol))
-
-            if quantidade_maxima == 0:
-                quantidade_maxima = quantidade
-
-            if quantidade > quantidade_maxima:
-                quantidade = quantidade_maxima
-
-            logging.info(f"Quantidade1: {quantidade}")
-
-            quantidade = self._ajustar_quantidade_venda(symbol, quantidade)
-
-            logging.info(f"Quantidade2: {quantidade}")
-
-            quantidade = "{:f}".format(quantidade)
-
-            logging.info(f"Quantidade3: {quantidade}")
-
-            retorno = self._executar_ordem_sell(symbol, quantidade, 0, 0)
-
-            logger.info(f"Resultado da execução da ordem de venda: {retorno}")
-
-            return retorno
-
-        else:
-            logger.error(f"Tipo de ordem inválido: {ordem_tipo}")
+        except Exception as e:
+            logger.error(f"Erro ao executar ordem: {e}")
+            traceback.print_exc()
             return None
 
     def _executar_ordem_buy(
