@@ -158,6 +158,12 @@ class TradeExecutor:
 
     def verificar_saldo_moedas(self, symbol):
         try:
+
+            # Verifica se os 4 últimos dígitos do símbolo são 'USDT'
+            if symbol.endswith("USDT"):
+                # Remove os 4 últimos caracteres ('USDT') do símbolo
+                symbol = symbol[:-4]
+
             logging.info(f"Verificando saldo disponível em {symbol}...")
 
             # Obtém todas as informações da conta, incluindo saldos de todos os ativos
