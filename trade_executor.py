@@ -121,8 +121,8 @@ class TradeExecutor:
             quantidade_ajustada = round(quantidade // step_size * step_size, 8)
 
             # Formatar a quantidade para garantir que não tenha mais casas decimais que o necessário
-            quantidade_ajustada_str = (
-                "{:0.8f}".format(quantidade_ajustada).rstrip("0").rstrip(".")
+            quantidade_ajustada_str = f"{quantidade_ajustada:.8f}".rstrip("0").rstrip(
+                "."
             )
 
             logging.info(f"quantidade ajustada: {quantidade_ajustada_str}")
