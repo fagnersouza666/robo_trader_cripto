@@ -278,7 +278,7 @@ class TradeExecutor:
             if venda_parcial:
                 quantidade = quantidade * 0.5
 
-            quantidade_maxima = self.verificar_saldo_moedas(symbol)
+            quantidade_maxima = float(self.verificar_saldo_moedas(symbol))
 
             if quantidade_maxima == 0:
                 quantidade_maxima = quantidade
@@ -361,16 +361,8 @@ class TradeExecutor:
                 )
                 logger.info(f"Ordem de venda executada para {symbol}: {ordem_venda}")
             except BinanceAPIException as e:
-                saldo = self.verificar_saldo_moedas(symbol)
-                preco_atual = float(
-                    self.client.get_symbol_ticker(symbol=symbol)["price"]
-                )
-                quantidade = preco_atual / saldo
-
+                quantidade = float(self.verificar_saldo_moedas(symbol))
                 ajustar_quantidade = self._ajustar_quantidade_venda(symbol, quantidade)
-                logger.info(
-                    f"preco_atual: {preco_atual} | saldo: {saldo} | quantidade: {quantidade} | ajustar_quantidade: {ajustar_quantidade}"
-                )
 
                 ordem_venda = self.client.order_market_sell(
                     symbol=symbol, quantity=ajustar_quantidade
