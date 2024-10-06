@@ -194,7 +194,7 @@ class DatabaseManager:
         Obtém todas as transações de um símbolo específico.
         O tipo de transação pode ser "COMPRA" ou "VENDA", se fornecido.
         """
-        query = "SELECT SUM(preco * quantidade) / SUM(quantidade) AS preco_medio, sum(quantidade) as quantidade_total, sum(taxa) as taxa_total FROM transacoes WHERE simbolo = ? AND vendido = 0"
+        query = "SELECT SUM(preco * quantidade) / SUM(quantidade) as preco_medio, sum(quantidade) as quantidade_total, sum(taxa) as taxa_total FROM transacoes WHERE simbolo = ? AND vendido = 0"
         params = [simbolo]
 
         if tipo:
@@ -207,7 +207,7 @@ class DatabaseManager:
         if transacoes:
             return transacoes[0], transacoes[1], transacoes[2]
 
-        return None
+        return 0.0, 0.0, 0.0
 
     def criar_tabela_stop_loss(self):
         with self.conn:

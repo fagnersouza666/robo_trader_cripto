@@ -79,18 +79,12 @@ class TradingBot:
         """
         Calcula o preço médio de compra e a quantidade total acumulada para uma moeda.
         """
-        transacoes = self.database_manager.obter_transacoes(symbol, tipo="COMPRA")
-        valor_total_compras = 0.0
-        quantidade_total = 0.0
-        taxas_total = 0.0
-
-        quantidade_total = transacoes[1]
+        preco_medio, quantidade_total, taxas_total = (
+            self.database_manager.obter_transacoes_totais(symbol, tipo="COMPRA")
+        )
 
         if quantidade_total == 0.0:
             return 0.0, 0.0, 0.0  # Sem compras registradas
-
-        preco_medio = transacoes[0]
-        taxas_total = transacoes[2]
 
         return preco_medio, quantidade_total, taxas_total
 
