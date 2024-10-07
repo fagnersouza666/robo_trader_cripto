@@ -247,11 +247,6 @@ class TradingBot:
                 vendido=1,
             )
 
-            # Analisar o desempenho da venda
-            desempenho, diferenca = self.analisar_desempenho_venda(
-                symbol, preco_venda_real
-            )
-
             # Enviar relatório de desempenho via Telegram
             relatorio = (
                 f"Venda realizada para {symbol}\n"
@@ -259,7 +254,7 @@ class TradingBot:
                 f"Média de preço de compra: {preco_medio_compra:.2f} USDT\n"
                 f"Taxa total de compras: {taxas_total_compras:.2f} USDT\n"
                 f"Taxa de venda: {taxa:.2f} USDT\n"
-                f"Lucro de {preco_venda_real - (preco_medio_compra + taxas_total_compras + taxa):.2f} USDT\n"
+                f"Lucro de {float(preco_venda_real) - (float(preco_medio_compra + taxas_total_compras + taxa)):.2f} USDT\n"
             )
             self.telegram_notifier.enviar_mensagem(relatorio)
 
