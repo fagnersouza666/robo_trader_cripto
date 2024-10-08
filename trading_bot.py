@@ -233,6 +233,8 @@ class TradingBot:
                 logger.error(f"Falha ao executar a ordem de venda para {symbol}.")
                 return
 
+            self.database_manager.deleta_stop_loss(symbol)
+
             preco_venda_real, taxa = resultado
 
             valor_total = quantidade_total_ajustada * preco_venda_real
@@ -417,6 +419,7 @@ class TradingBot:
 
     def comprar(self, key: str, stake: str) -> Optional[float]:
         logger.info(f"Executando compra para {key}")
+
         resultado = self.trade_executor.executar_ordem(
             symbol=key, quantidade=stake, ordem_tipo="buy", venda_parcial=False
         )
@@ -675,6 +678,10 @@ class TradingBot:
                     preco_compra = self.comprar(key, stake)
                     if preco_compra is not None:
                         logger.info(f"Compra executada para {key}: {preco_compra}")
+
+                    self.database_manager.salvar_stop_loss(
+                        key, preco_compra * 0.97, preco_compra
+                    )
 
             except Exception as e:
                 logger.error(f"Erro inesperado no símbolo {key}: {e}")

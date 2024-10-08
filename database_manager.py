@@ -231,6 +231,15 @@ class DatabaseManager:
                 (simbolo, stop_loss, preco_maximo),
             )
 
+    def deleta_stop_loss(self, simbolo: str):
+        with self.conn:
+            self.cursor.execute(
+                """
+                DELETE FROM stop_loss WHERE simbolo = ?
+                """,
+                (simbolo,),
+            )
+
     def obter_stop_loss(self, simbolo: str):
         self.cursor.execute(
             "SELECT stop_loss, preco_maximo FROM stop_loss WHERE simbolo = ?",
@@ -257,7 +266,7 @@ class DatabaseManager:
 
     def obter_valor_atual_lucro(self):
         self.cursor.execute(
-            "SELECT sum(ganhos) - sum(taxa_compra) - sum(taxa_venda) FROM ganhos"
+            "SELECT sum(ganhos) + sum(valor_compras) - sum(valor_vendas) FROM ganhos"
         )
         resultado = self.cursor.fetchone()
         if resultado:
