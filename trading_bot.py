@@ -215,9 +215,9 @@ class TradingBot:
             preco_atual = float(self.client.get_symbol_ticker(symbol=symbol)["price"])
             preco_atual = float(preco_atual)
 
-            if controle_compra > preco_atual:
+            if controle_compra * 0.97 > preco_atual:
                 logger.error(
-                    f"Preco compra({controle_compra}) > preco atual({preco_atual}) para {symbol}. Operação de venda cancelada."
+                    f"Preco compra({float(controle_compra) * 0.97}) > preco atual({preco_atual}) para {symbol}. Operação de venda cancelada."
                 )
                 return
 
@@ -679,8 +679,12 @@ class TradingBot:
                     if preco_compra is not None:
                         logger.info(f"Compra executada para {key}: {preco_compra}")
 
+                    preco_medio, quantidade_total, taxa_total = (
+                        self.database_manager.obter_transacoes_totais(key, "COMPRA")
+                    )
+
                     self.database_manager.salvar_stop_loss(
-                        key, preco_compra * 0.97, preco_compra
+                        key, preco_medio * 0.97, preco_medio
                     )
 
             except Exception as e:
