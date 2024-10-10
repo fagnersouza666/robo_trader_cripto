@@ -35,7 +35,7 @@ class TradingBot:
         casas_decimais: Dict[str, int],
         min_notional: Dict[str, float],
         interval_compra: str = Client.KLINE_INTERVAL_15MINUTE,
-        interval_venda: str = Client.KLINE_INTERVAL_1MINUTE,
+        interval_venda: str = Client.KLINE_INTERVAL_5MINUTE,
     ) -> None:
         self.client = Client(api_key=binance_api_key, api_secret=binance_secret_key)
         self.client.time_sync = True
