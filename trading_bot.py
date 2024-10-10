@@ -232,6 +232,7 @@ class TradingBot:
             preco_venda_real, taxa = resultado
 
             valor_total = quantidade_total_ajustada * preco_venda_real
+            valor_compra = quantidade_total_ajustada * preco_medio_compra
 
             self.registrar_e_notificar_operacao(
                 symbol=symbol,
@@ -250,7 +251,7 @@ class TradingBot:
                 f"Média de preço de compra: {preco_medio_compra:.2f} USDT\n"
                 f"Taxa total de compras: {taxas_total_compras:.2f} USDT\n"
                 f"Taxa de venda: {taxa:.2f} USDT\n"
-                f"Lucro de {float(preco_venda_real) - (float(preco_medio_compra + taxas_total_compras + taxa)):.2f} USDT\n"
+                f"Lucro de {float(valor_total) - (float(valor_compra + taxas_total_compras + taxa)):.2f} USDT\n"
             )
             self.telegram_notifier.enviar_mensagem(relatorio)
 
