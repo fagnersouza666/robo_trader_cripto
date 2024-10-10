@@ -215,12 +215,6 @@ class TradingBot:
             preco_atual = float(self.client.get_symbol_ticker(symbol=symbol)["price"])
             preco_atual = float(preco_atual)
 
-            if controle_compra * 0.97 > preco_atual:
-                logger.error(
-                    f"Preco compra({float(controle_compra) * 0.97}) > preco atual({preco_atual}) para {symbol}. Operação de venda cancelada."
-                )
-                return
-
             # Executar a venda de toda a quantidade acumulada
             resultado = self.trade_executor.executar_ordem(
                 symbol=symbol,
