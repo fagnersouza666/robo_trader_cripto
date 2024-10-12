@@ -491,6 +491,8 @@ class TradingBot:
             volume_medio = indicadores["volume_medio"]
             ema1 = indicadores["ema1"]
             ema2 = indicadores["ema2"]
+            ema12 = indicadores["ema12"]
+            ema22 = indicadores["ema22"]
             close_price = indicadores["close_price"]
 
             # Identificando níveis de suporte e resistência
@@ -506,13 +508,11 @@ class TradingBot:
             positivo = "positivo" in sentimento
             negativo = "negativo" in sentimento
 
-            logger.info(f"indicadores: {indicadores}")
-            logger.info(f"ema1: {ema1} - ema2: {ema2}")
             if sentimento == "neutro":
-                if ema1 > ema2[-1] and ema1[-2] < ema2[-2]:
+                if ema1 > ema2 and ema12 < ema22:
                     return "Comprar"
             else:
-                if ema1[-1] > ema2[-1] and ema1[-2] < ema2[-2]:
+                if ema1 > ema2 and ema12 < ema22:
                     return "Comprar"
             return "Esperar"
 
@@ -663,6 +663,8 @@ class TradingBot:
                 "preco_anterior": df["close"].iloc[-2],
                 "ema1": df["EMA1"].iloc[-1],
                 "ema2": df["EMA2"].iloc[-1],
+                "ema12": df["EMA1"].iloc[-2],
+                "ema22": df["EMA2"].iloc[-2],
                 "close_price": df["CLOSE_PRICE"].iloc[-1],
             }
             return indicadores
