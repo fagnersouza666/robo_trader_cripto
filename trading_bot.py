@@ -499,11 +499,6 @@ class TradingBot:
             resistencia = bb_upper if ultimo_preco < bb_upper else vwap
             suporte = bb_lower if ultimo_preco > bb_lower else vwap
 
-            if ultimo_preco > vwap and volume_atual > volume_medio * 1.5:
-                return "Comprar"
-            elif ultimo_preco < vwap and volume_atual > volume_medio * 1.5:
-                return "Vender"
-
             sentimento = sentimento.lower()
             positivo = "positivo" in sentimento
             negativo = "negativo" in sentimento
