@@ -506,9 +506,10 @@ class TradingBot:
             positivo = "positivo" in sentimento
             negativo = "negativo" in sentimento
 
+            logger.info(f"indicadores: {indicadores}")
             logger.info(f"ema1: {ema1} - ema2: {ema2}")
             if sentimento == "neutro":
-                if ema1[-1] > ema2[-1] and ema1[-2] < ema2[-2]:
+                if ema1 > ema2[-1] and ema1[-2] < ema2[-2]:
                     return "Comprar"
             else:
                 if ema1[-1] > ema2[-1] and ema1[-2] < ema2[-2]:
