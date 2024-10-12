@@ -439,49 +439,6 @@ class TradingBot:
 
         return preco_compra
 
-    def estrategia_venda_reversao(self, df, symbol):
-        """
-        Estratégia para detectar reversão de mercado e vender.
-        """
-        try:
-            indicadores = self.obter_indicadores(df)
-            if indicadores is None:
-                return "Esperar", 0.0
-
-            # Previsão de preço futuro usando ML
-            preco_previsto = self.prever_preco_futuro(df, symbol)
-
-            rsi = indicadores["rsi"]
-            rsi_anterior = indicadores["rsi_anterior"]
-            momentum = indicadores["momentum"]
-            ultimo_preco = indicadores["ultimo_preco"]
-            bb_upper = indicadores["bb_upper"]
-            volume_atual = indicadores["volume_atual"]
-            volume_medio = indicadores["volume_medio"]
-
-            # Lógica de venda se a previsão indicar queda no preço futuro
-            if preco_previsto < ultimo_preco:
-                return "VenderTotal", ultimo_preco
-
-            # Venda parcial se RSI estiver sobrecomprado e volume acima da média
-            if rsi > 70 and volume_atual > volume_medio * 1.2:
-                return "VenderParcial", ultimo_preco
-
-            # Venda total se RSI mostrar divergência negativa e momentum cair
-            if rsi < rsi_anterior and momentum < 0:
-                return "VenderTotal", ultimo_preco
-
-            # Venda se o preço tocar a banda superior de Bollinger
-            if ultimo_preco > bb_upper:
-                return "VenderTotal", ultimo_preco
-
-            return "Esperar", 0.0
-
-        except Exception as e:
-            logger.error(f"Erro na estratégia de venda reversão para {symbol}: {e}")
-            logger.debug(traceback.format_exc())
-            return "Esperar", 0.0
-
     def prever_preco_futuro(self, df, symbol):
         """
         Usa regressão linear para prever o preço futuro com base nos dados históricos de mercado.
@@ -532,6 +489,9 @@ class TradingBot:
             momentum = indicadores["momentum"]
             volume_atual = indicadores["volume_atual"]
             volume_medio = indicadores["volume_medio"]
+            ema1 = indicadores["ema1"]
+            ema2 = indicadores["ema2"]
+            close_price = indicadores["close_price"]
 
             # Identificando níveis de suporte e resistência
             resistencia = bb_upper if ultimo_preco < bb_upper else vwap
@@ -547,56 +507,11 @@ class TradingBot:
             negativo = "negativo" in sentimento
 
             if sentimento == "neutro":
-                if rsi < 35 and sma50 > sma200:
+                if ema1[-1] > ema2[-1] and ema1[-2] < ema2[-2]:
                     return "Comprar"
-                elif rsi > 70 and sma50 < sma200:
-                    return "Vender"
-                elif rsi < 35 and ultimo_preco > vwap:
-                    return "Comprar"
-                elif rsi > 70 and ultimo_preco < vwap:
-                    return "Vender"
-                elif ultimo_preco > vwap and ultimo_preco < bb_upper:
-                    return "Comprar"
-                elif ultimo_preco < vwap and ultimo_preco > bb_lower:
-                    return "Vender"
-                elif ultimo_preco > vwap and momentum > 0:
-                    return "Comprar"
-                elif ultimo_preco < vwap and momentum < 0:
-                    return "Vender"
-                elif ultimo_preco > resistencia:
-                    return "Comprar"
-                elif ultimo_preco < suporte:
-                    return "Vender"
-                elif ultimo_preco < preco_anterior and rsi > rsi_anterior:
-                    return "Comprar"
-                elif ultimo_preco > preco_anterior and rsi < rsi_anterior:
-                    return "Vender"
             else:
-                if rsi < 35 and sma50 > sma200 and positivo:
+                if ema1[-1] > ema2[-1] and ema1[-2] < ema2[-2]:
                     return "Comprar"
-                elif rsi > 70 and sma50 < sma200 and negativo:
-                    return "Vender"
-                elif rsi < 35 and ultimo_preco > vwap and positivo:
-                    return "Comprar"
-                elif rsi > 70 and ultimo_preco < vwap and negativo:
-                    return "Vender"
-                elif ultimo_preco > vwap and ultimo_preco < bb_upper and positivo:
-                    return "Comprar"
-                elif ultimo_preco < vwap and ultimo_preco > bb_lower and negativo:
-                    return "Vender"
-                elif ultimo_preco > vwap and momentum > 0 and positivo:
-                    return "Comprar"
-                elif ultimo_preco < vwap and momentum < 0 and negativo:
-                    return "Vender"
-                elif ultimo_preco > resistencia and positivo:
-                    return "Comprar"
-                elif ultimo_preco < suporte and negativo:
-                    return "Vender"
-                elif ultimo_preco < preco_anterior and rsi > rsi_anterior:
-                    return "Comprar"
-                elif ultimo_preco > preco_anterior and rsi < rsi_anterior:
-                    return "Vender"
-
             return "Esperar"
 
         except Exception as e:
@@ -658,7 +573,8 @@ class TradingBot:
                 df = self.indicator_calculator.calcular_indicadores(df)
 
                 # Analisar sentimento
-                sentimento = self.sentiment_analyzer.analisar_sentimento(value)
+                # sentimento = self.sentiment_analyzer.analisar_sentimento(value)
+                sentimento = "neutro"
 
                 # Determinar se deve comprar
                 acao = self.estrategia_trading(df, sentimento)
@@ -707,25 +623,12 @@ class TradingBot:
                 # Atualizar o preço máximo e stop-loss dinâmico
                 preco_atual = df["close"].iloc[-1]
 
-                if preco_maximo is None:
-                    preco_maximo = preco_atual
-                    stop_loss_atual = preco_maximo * 0.97
-
-                if preco_atual > preco_maximo:
-                    preco_maximo = preco_atual
-                    stop_loss_atual = preco_maximo * 0.97
-
                 # Se o preço atual cair abaixo do stop-loss, vender a posição
                 if preco_atual <= stop_loss_atual:
                     logger.info(
                         f"Executando venda devido ao stop-loss atingido para {key}"
                     )
                     self.vender(key, value, "Vender", str(preco_atual))
-
-                # Atualizar o stop-loss no banco de dados
-                self.database_manager.salvar_stop_loss(
-                    key, stop_loss_atual, preco_maximo
-                )
 
             except Exception as e:
                 logger.error(f"Erro inesperado no símbolo {key}: {e}")
@@ -756,6 +659,9 @@ class TradingBot:
                 "sma200": df["SMA200"].iloc[-1] if "SMA200" in df.columns else None,
                 "vwap": df["VWAP"].iloc[-1],
                 "preco_anterior": df["close"].iloc[-2],
+                "ema1": df["EMA1"].iloc[-1],
+                "ema2": df["EMA2"].iloc[-1],
+                "close_price": df["CLOSE_PRICE"].iloc[-1],
             }
             return indicadores
         except Exception as e:
@@ -809,3 +715,40 @@ class TradingBot:
 
         logger.info(f"Após a venda, o preço {desempenho} {abs(diferenca):.2f} USDT.")
         return desempenho, diferenca
+
+    def atualiza_stoploss(self):
+        logger.info("Iniciando atualização do stop loss para todas as moedas")
+
+        for symbol in self.symbols:
+            try:
+                # Obtém o preço médio e a quantidade total das compras
+                preco_medio, quantidade_total, _ = (
+                    self.calcular_preco_medio_e_quantidade_banco(symbol)
+                )
+
+                if preco_medio > 0 and quantidade_total > 0:
+                    # Calcula o novo stop loss (por exemplo, 5% abaixo do preço médio)
+                    novo_stop_loss = preco_medio * 0.97
+
+                    # Obtém o preço atual
+                    preco_atual = float(
+                        self.client.get_symbol_ticker(symbol=symbol)["price"]
+                    )
+
+                    # Atualiza o stop loss e o preço máximo no banco de dados
+                    self.database_manager.salvar_stop_loss(
+                        symbol, novo_stop_loss, preco_atual
+                    )
+
+                    logger.info(
+                        f"Stop loss atualizado para {symbol}: {novo_stop_loss:.8f}"
+                    )
+                else:
+                    logger.info(
+                        f"Não há compras registradas para {symbol}. Stop loss não atualizado."
+                    )
+
+            except Exception as e:
+                logger.error(f"Erro ao atualizar stop loss para {symbol}: {str(e)}")
+
+        logger.info("Atualização do stop loss concluída")

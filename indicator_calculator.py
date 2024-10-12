@@ -47,4 +47,9 @@ class IndicatorCalculator:
         if indicadores.get("Volume"):
             df["Volume"] = df["volume"].rolling(window=10).mean()  # Média do volume
 
+        # Cálculo das EMAs
+        df["EMA1"] = ta.EMA(df["close"], timeperiod=9)
+        df["EMA2"] = ta.EMA(df["close"], timeperiod=21)
+        df["CLOSE_PRICE"] = df["close"][-1]
+
         return df
