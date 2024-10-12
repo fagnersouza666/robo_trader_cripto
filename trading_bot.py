@@ -516,7 +516,7 @@ class TradingBot:
 
         except Exception as e:
             logger.error(f"Erro na estratégia de trading: {e}")
-            logger.debug(traceback.format_exc())
+            traceback.print_exc()
             return "Esperar"
 
     def registrar_e_notificar_operacao(
