@@ -19,6 +19,8 @@ class IndicatorCalculator:
                 "BollingerBands": True,
                 "Momentum": True,
                 "Volume": True,
+                "EM1": True,
+                "EMA2": True,
             }
 
         # Certifique-se de que o índice é um DatetimeIndex
