@@ -10,7 +10,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s %(message)s",
     handlers=[
-        logging.FileHandler("bot_trading.log", mode="a"),
+        logging.FileHandler("bot_venda.log", mode="a"),
         logging.StreamHandler(),
     ],
 )

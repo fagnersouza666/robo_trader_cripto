@@ -727,7 +727,7 @@ class TradingBot:
 
                 if preco_medio > 0 and quantidade_total > 0:
                     # Calcula o novo stop loss (por exemplo, 5% abaixo do preço médio)
-                    novo_stop_loss = preco_medio * 0.97
+                    novo_stop_loss = preco_medio * 0.99
 
                     # Obtém o preço atual
                     preco_atual = float(
