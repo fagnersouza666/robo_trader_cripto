@@ -116,5 +116,25 @@ if __name__ == "__main__":
         min_notional=min_notional,
     )
 
-    # Executa apenas a estratégia de compra
-    bot.atualiza_stoploss()
+    # Coletar os dados de mercado para calcular a volatilidade
+    df = bot.data_handler_compra.obter_dados_mercado(symbols[list(symbols.keys())[0]])
+
+    if not df.empty:
+        # Calcula a volatilidade
+        volatilidade = calcular_volatilidade(df)
+
+        # Ajusta o intervalo de tempo baseado na volatilidade
+        intervalo_minutos = ajustar_intervalo_por_volatilidade(volatilidade)
+
+        # Verifica se já passou tempo suficiente desde a última execução
+        if passou_tempo_suficiente(intervalo_minutos):
+            logging.info(
+                f"Volatilidade atual: {volatilidade:.4f}, Intervalo de atualização: {intervalo_minutos} minutos"
+            )
+            logging.info("Tempo suficiente passado, executando o código...")
+
+            # Executa apenas a estratégia de compra
+            bot.atualiza_stoploss()
+
+            # Atualiza o timestamp de execução
+            salvar_timestamp_atual()
