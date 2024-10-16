@@ -19,6 +19,7 @@ from trade_executor import TradeExecutor
 
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
+import numpy as np
 
 
 logger = logging.getLogger(__name__)
@@ -618,7 +619,7 @@ class TradingBot:
                 )
 
                 # Atualizar o preço máximo e stop-loss dinâmico
-                preco_atual = df["close"].iloc[-1]
+                preco_atual = df["close"]
 
                 # Se o preço atual cair abaixo do stop-loss, vender a posição
                 if preco_atual <= stop_loss_atual:
@@ -720,24 +721,44 @@ class TradingBot:
 
         for symbol in self.symbols:
             try:
+
+                # Obtém os dados de mercado recentes
+                df = self.data_handler_compra.obter_dados_mercado(symbol)
+                if df.empty:
+                    continue
+
+                # Calcula a volatilidade
+                volatilidade = self.calcular_volatilidade(df)
+
+                # Ajusta o percentual de stop loss baseado na volatilidade
+                percentual_stop_loss = self.ajustar_percentual_stop_loss(volatilidade)
+
                 # Obtém o preço médio e a quantidade total das compras
                 preco_medio, quantidade_total, _ = (
                     self.calcular_preco_medio_e_quantidade_banco(symbol)
                 )
 
                 if preco_medio > 0 and quantidade_total > 0:
-                    # Calcula o novo stop loss (por exemplo, 5% abaixo do preço médio)
-                    novo_stop_loss = preco_medio * 0.99
+
+                    # Calcula o novo stop loss (percentual abaixo do preço médio)
+                    novo_stop_loss = preco_medio * (1 - percentual_stop_loss)
 
                     # Obtém o preço atual
                     preco_atual = float(
                         self.client.get_symbol_ticker(symbol=symbol)["price"]
                     )
 
-                    # Atualiza o stop loss e o preço máximo no banco de dados
-                    self.database_manager.salvar_stop_loss(
-                        symbol, novo_stop_loss, preco_atual
-                    )
+                    # Obtém o stop loss atual do banco de dados
+                    stop_loss_atual, _ = self.database_manager.obter_stop_loss(symbol)
+
+                    # Atualiza o stop loss apenas se o novo for maior que o atual
+                    if novo_stop_loss > stop_loss_atual:
+                        self.database_manager.salvar_stop_loss(
+                            symbol, novo_stop_loss, preco_atual
+                        )
+                        logger.info(
+                            f"Stop loss atualizado para {symbol}: {novo_stop_loss:.8f}"
+                        )
 
                     logger.info(
                         f"Stop loss atualizado para {symbol}: {novo_stop_loss:.8f}"
@@ -751,3 +772,21 @@ class TradingBot:
                 logger.error(f"Erro ao atualizar stop loss para {symbol}: {str(e)}")
 
         logger.info("Atualização do stop loss concluída")
+
+    def calcular_volatilidade(self, df, periodos=14):
+        """
+        Calcula a volatilidade com base no desvio padrão dos preços de fechamento.
+        """
+        return np.std(df["close"].tail(periodos))
+
+    def ajustar_percentual_stop_loss(self, volatilidade):
+        """
+        Ajusta o percentual de stop loss com base na volatilidade.
+        Quanto maior a volatilidade, mais amplo será o stop loss.
+        """
+        if volatilidade < 0.005:  # baixa volatilidade
+            return 0.02  # 2%
+        elif volatilidade < 0.01:  # volatilidade moderada
+            return 0.03  # 3%
+        else:  # alta volatilidade
+            return 0.05  # 5%
