@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
     # Pega o primeiro par de negociação do dicionário SYMBOLS
     symbol = list(symbols.keys())[0]  # Isso deve resultar em "BTCUSDT"
-    logging.info(f"Obtendo dados de mercado para o símbolo: {symbol}")
+
     df = bot.data_handler_compra.obter_dados_mercado(symbol)
 
     if not df.empty:
