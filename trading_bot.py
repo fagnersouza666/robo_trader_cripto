@@ -619,7 +619,7 @@ class TradingBot:
                 )
 
                 # Atualizar o preço máximo e stop-loss dinâmico
-                preco_atual = df["close"]
+                preco_atual = df["close"].iloc[-1]
 
                 # Se o preço atual cair abaixo do stop-loss, vender a posição
                 if preco_atual <= stop_loss_atual:
