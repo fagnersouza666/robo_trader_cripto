@@ -618,8 +618,19 @@ class TradingBot:
                     key
                 )
 
+                # Verificar se stop_loss_atual é None
+                if stop_loss_atual is None:
+                    logger.warning(
+                        f"Stop-loss atual é None para {key}. Ignorando venda."
+                    )
+                    continue
+
                 # Atualizar o preço máximo e stop-loss dinâmico
                 preco_atual = df["close"].iloc[-1]
+
+                if preco_atual is None:
+                    logger.warning(f"Preço atual é None para {key}. Ignorando venda.")
+                    continue
 
                 # Se o preço atual cair abaixo do stop-loss, vender a posição
                 if preco_atual <= stop_loss_atual:
