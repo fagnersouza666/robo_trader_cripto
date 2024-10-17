@@ -117,7 +117,9 @@ if __name__ == "__main__":
     )
 
     # Coletar os dados de mercado para calcular a volatilidade
-    df = bot.data_handler_compra.obter_dados_mercado(symbols[list(symbols.keys())[0]])
+    symbol = symbols[list(symbols.keys())[0]]
+    logging.info(f"Obtendo dados de mercado para o símbolo: {symbol}")
+    df = bot.data_handler_compra.obter_dados_mercado(symbol)
 
     if not df.empty:
         # Calcula a volatilidade
