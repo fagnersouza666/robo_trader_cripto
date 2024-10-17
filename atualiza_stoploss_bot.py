@@ -116,10 +116,8 @@ if __name__ == "__main__":
         min_notional=min_notional,
     )
 
-    # Coletar os dados de mercado para calcular a volatilidade
-    logging.info(f"symbols: {symbols}")
-
-    symbol = symbols[list(symbols.keys())[0]]
+    # Pega o primeiro par de negociação do dicionário SYMBOLS
+    symbol = list(symbols.keys())[0]  # Isso deve resultar em "BTCUSDT"
     logging.info(f"Obtendo dados de mercado para o símbolo: {symbol}")
     df = bot.data_handler_compra.obter_dados_mercado(symbol)
 
