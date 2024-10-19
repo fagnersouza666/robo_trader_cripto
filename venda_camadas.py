@@ -35,7 +35,7 @@ class VendaExecutorCamadas:
         """
         try:
             ordem = self.client.order_market_sell(
-                symbol=symbol, quantity=quantidade, recvWindow=5000
+                symbol=symbol, quantity=quantidade, recvWindow=60000
             )
             preco_venda = float(ordem["fills"][0]["price"])
             taxa = float(ordem["fills"][0]["commission"])
@@ -80,7 +80,7 @@ class VendaExecutorCamadas:
                 price=str(stop_loss_price),
                 stopPrice=str(stop_loss_price),
                 timeInForce="GTC",
-                recvWindow=5000,
+                recvWindow=60000,
             )
 
             logger.info(f"Trailing stop configurado para {symbol} a {stop_loss_price}.")
