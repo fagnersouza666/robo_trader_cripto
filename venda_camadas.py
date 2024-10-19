@@ -34,7 +34,9 @@ class VendaExecutorCamadas:
         Executa uma venda de uma parte da posição no mercado.
         """
         try:
-            ordem = self.client.order_market_sell(symbol=symbol, quantity=quantidade)
+            ordem = self.client.order_market_sell(
+                symbol=symbol, quantity=quantidade, recvWindow=5000
+            )
             preco_venda = float(ordem["fills"][0]["price"])
             taxa = float(ordem["fills"][0]["commission"])
 
@@ -78,6 +80,7 @@ class VendaExecutorCamadas:
                 price=str(stop_loss_price),
                 stopPrice=str(stop_loss_price),
                 timeInForce="GTC",
+                recvWindow=5000,
             )
 
             logger.info(f"Trailing stop configurado para {symbol} a {stop_loss_price}.")

@@ -38,10 +38,10 @@ class TradeExecutor:
         for i in range(tentativas):
             try:
                 logger.info(f"Tentativa {i+1} de recompra.")
-                ordem = self.client.order_market_buy(symbol=symbol, quantity=quantidade)
+                ordem = self.client.order_market_buy(symbol=symbol, quantity=quantidade, recvWindow=5000)
                 preco_compra = float(ordem["fills"][0]["price"])
                 return preco_compra
-            except BinanceAPIException as e:
+            except BinanceAPIException as e:, 
                 logger.error(f"Tentativa {i+1} falhou: {e}")
                 if i == tentativas - 1:
                     logger.error("Excedido número de tentativas.")
@@ -49,7 +49,7 @@ class TradeExecutor:
 
     def executar_venda(self, symbol: str, quantidade: float):
         try:
-            ordem = self.client.order_market_sell(symbol=symbol, quantity=quantidade)
+            ordem = self.client.order_market_sell(symbol=symbol, quantity=quantidade, recvWindow=5000)
             logger.info(f"Ordem de venda executada: {ordem}")
             return float(ordem["fills"][0]["price"])
         except BinanceAPIException as e:
@@ -153,7 +153,7 @@ class TradeExecutor:
 
     def verificar_saldo(self, symbol="USDT"):
         logging.info(f"Verificando saldo disponível em {symbol}...")
-        saldo_base = self.client.get_asset_balance(asset=symbol)
+        saldo_base = self.client.get_asset_balance(asset=symbol, recvWindow=5000)
         saldo_disponivel = float(saldo_base["free"])
 
         logger.info(f"Saldo disponível em USDT: {saldo_disponivel}")
@@ -170,7 +170,7 @@ class TradeExecutor:
             logging.info(f"Verificando saldo disponível em {symbol}...")
 
             # Obtém todas as informações da conta, incluindo saldos de todos os ativos
-            conta = self.client.get_account()
+            conta = self.client.get_account(recvWindow=5000)
 
             # Filtra a lista de saldos para encontrar o ativo específico (symbol)
             for asset in conta["balances"]:
@@ -343,7 +343,7 @@ class TradeExecutor:
             )
             # Executa a ordem de compra no mercado
             ordem_compra = self.client.order_market_buy(
-                symbol=symbol, quantity=quantidade
+                symbol=symbol, quantity=quantidade, recvWindow=5000
             )
             logger.info(f"Ordem de compra executada para {symbol}: {ordem_compra}")
 
@@ -374,7 +374,7 @@ class TradeExecutor:
             try:
                 # Executa a ordem de venda no mercado
                 ordem_venda = self.client.order_market_sell(
-                    symbol=symbol, quantity=quantidade, recvWindow=555000
+                    symbol=symbol, quantity=quantidade, recvWindow=5000
                 )
                 logger.info(f"Ordem de venda executada para {symbol}: {ordem_venda}")
             except BinanceAPIException as e:
@@ -382,7 +382,7 @@ class TradeExecutor:
                 ajustar_quantidade = self._ajustar_quantidade_venda(symbol, quantidade)
 
                 ordem_venda = self.client.order_market_sell(
-                    symbol=symbol, quantity=ajustar_quantidade
+                    symbol=symbol, quantity=ajustar_quantidade, recvWindow=5000
                 )
 
                 logger.info(f"Ordem de venda executada para {symbol}: {ordem_venda} ")

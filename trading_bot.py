@@ -59,7 +59,7 @@ class TradingBot:
         """
         Calcula o valor da stake com base no risco definido (porcentagem do saldo), verificando o notional mínimo.
         """
-        saldo_base = self.client.get_asset_balance(asset="USDT")
+        saldo_base = self.client.get_asset_balance(asset="USDT", recvWindow=5000)
         saldo_disponivel = float(saldo_base["free"])
 
         # Calcular a stake como porcentagem do saldo
@@ -350,7 +350,7 @@ class TradingBot:
             logger.info(f"Verificando saldo disponível em {moeda}...")
 
             # Obter todas as informações de conta (incluindo saldo) via API da Binance
-            conta = self.client.get_account()
+            conta = self.client.get_account(recvWindow=5000)
 
             # Procurar o saldo da moeda especificada
             for asset in conta["balances"]:
