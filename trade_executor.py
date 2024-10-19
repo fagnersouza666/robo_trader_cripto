@@ -374,7 +374,7 @@ class TradeExecutor:
             try:
                 # Executa a ordem de venda no mercado
                 ordem_venda = self.client.order_market_sell(
-                    symbol=symbol, quantity=quantidade, recvWindow=5000
+                    symbol=symbol, quantity=quantidade, recvWindow=555000
                 )
                 logger.info(f"Ordem de venda executada para {symbol}: {ordem_venda}")
             except BinanceAPIException as e:
