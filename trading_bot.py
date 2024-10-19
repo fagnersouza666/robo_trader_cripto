@@ -749,18 +749,28 @@ class TradingBot:
                     self.calcular_preco_medio_e_quantidade_banco(symbol)
                 )
 
+                logger.info(
+                    f"Moeda: {symbol} Preço médio: {preco_medio}, Quantidade total: {quantidade_total}"
+                )
+
                 if preco_medio > 0 and quantidade_total > 0:
 
                     # Calcula o novo stop loss (percentual abaixo do preço médio)
                     novo_stop_loss = preco_medio * (1 - percentual_stop_loss)
+
+                    logger.info(f"Novo stop loss para {symbol}: {novo_stop_loss:.8f}")
 
                     # Obtém o preço atual
                     preco_atual = float(
                         self.client.get_symbol_ticker(symbol=symbol)["price"]
                     )
 
+                    logger.info(f"Preço atual para {symbol}: {preco_atual:.8f}")
+
                     # Obtém o stop loss atual do banco de dados
                     stop_loss_atual, _ = self.database_manager.obter_stop_loss(symbol)
+
+                    logger.info(f"Stop loss atual para {symbol}: {stop_loss_atual:.8f}")
 
                     # Atualiza o stop loss apenas se o novo for maior que o atual
                     if novo_stop_loss > stop_loss_atual:
