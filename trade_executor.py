@@ -174,7 +174,7 @@ class TradeExecutor:
             logging.info(f"Verificando saldo disponível em {symbol}...")
 
             # Obtém todas as informações da conta, incluindo saldos de todos os ativos
-            conta = self.client.get_account(recvWindow=5000)
+            conta = self.client.get_account(recvWindow=555000)
 
             # Filtra a lista de saldos para encontrar o ativo específico (symbol)
             for asset in conta["balances"]:
