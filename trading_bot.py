@@ -753,12 +753,11 @@ class TradingBot:
                     f"Moeda: {symbol} Preço médio: {preco_medio}, Quantidade total: {quantidade_total}"
                 )
 
+                logger.info(
+                    f"Percentual de stop loss ajustado para {symbol}: {percentual_stop_loss:.2f}"
+                )
+
                 if preco_medio > 0 and quantidade_total > 0:
-
-                    # Calcula o novo stop loss (percentual abaixo do preço médio)
-                    novo_stop_loss = preco_medio * (1 - percentual_stop_loss)
-
-                    logger.info(f"Novo stop loss para {symbol}: {novo_stop_loss:.8f}")
 
                     # Obtém o preço atual
                     preco_atual = float(
@@ -766,6 +765,11 @@ class TradingBot:
                     )
 
                     logger.info(f"Preço atual para {symbol}: {preco_atual:.8f}")
+
+                    # Calcula o novo stop loss (percentual abaixo do preço médio)
+                    novo_stop_loss = preco_atual * (1 - percentual_stop_loss)
+
+                    logger.info(f"Novo stop loss para {symbol}: {novo_stop_loss:.8f}")
 
                     # Obtém o stop loss atual do banco de dados
                     stop_loss_atual, _ = self.database_manager.obter_stop_loss(symbol)
