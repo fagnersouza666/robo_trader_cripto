@@ -38,10 +38,12 @@ class TradeExecutor:
         for i in range(tentativas):
             try:
                 logger.info(f"Tentativa {i+1} de recompra.")
-                ordem = self.client.order_market_buy(symbol=symbol, quantity=quantidade, recvWindow=5000)
+                ordem = self.client.order_market_buy(
+                    symbol=symbol, quantity=quantidade, recvWindow=5000
+                )
                 preco_compra = float(ordem["fills"][0]["price"])
                 return preco_compra
-            except BinanceAPIException as e:, 
+            except BinanceAPIException as e:
                 logger.error(f"Tentativa {i+1} falhou: {e}")
                 if i == tentativas - 1:
                     logger.error("Excedido número de tentativas.")
@@ -49,7 +51,9 @@ class TradeExecutor:
 
     def executar_venda(self, symbol: str, quantidade: float):
         try:
-            ordem = self.client.order_market_sell(symbol=symbol, quantity=quantidade, recvWindow=5000)
+            ordem = self.client.order_market_sell(
+                symbol=symbol, quantity=quantidade, recvWindow=5000
+            )
             logger.info(f"Ordem de venda executada: {ordem}")
             return float(ordem["fills"][0]["price"])
         except BinanceAPIException as e:
