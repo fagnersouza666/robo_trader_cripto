@@ -296,14 +296,12 @@ class TradeExecutor:
                     self.client.get_symbol_ticker(symbol=symbol)["price"]
                 )
 
-                # Se for uma venda parcial, ajusta a quantidade para 50%
-                if venda_parcial:
-                    quantidade = quantidade * 0.5
-
                 quantidade_maxima = float(self.verificar_saldo_moedas(symbol))
 
                 if quantidade_maxima == 0:
                     quantidade_maxima = quantidade
+                else:
+                    quantidade = quantidade_maxima
 
                 if quantidade > quantidade_maxima:
                     quantidade = quantidade_maxima
