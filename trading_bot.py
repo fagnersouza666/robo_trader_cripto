@@ -704,8 +704,6 @@ class TradingBot:
             logger.error(f"Erro inesperado no símbolo {symbol}: {e}")
             logger.debug(traceback.format_exc())
 
-        self.database_manager.fechar_conexao()
-
     def executar_estrategia_venda(self, symbol, df) -> None:
         try:
 
@@ -744,8 +742,6 @@ class TradingBot:
         except Exception as e:
             logger.error(f"Erro inesperado no símbolo {symbol}: {e}")
             logger.debug(traceback.format_exc())
-
-        self.database_manager.fechar_conexao()
 
     def obter_indicadores(self, df):
         """
@@ -903,10 +899,6 @@ class TradingBot:
                             logger.info(
                                 f"Stop loss atualizado para {symbol}: {novo_stop_loss:.8f}"
                             )
-
-                        logger.info(
-                            f"Stop loss atualizado para {symbol}: {novo_stop_loss:.8f}"
-                        )
                     else:
                         logger.info(
                             f"Não há compras registradas para {symbol}. Stop loss não atualizado."
