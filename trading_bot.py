@@ -878,17 +878,9 @@ class TradingBot:
                         # Calcula o novo stop loss (percentual abaixo do preço médio)
                         novo_stop_loss = preco_atual * (1 - percentual_stop_loss)
 
-                        logger.info(
-                            f"Novo stop loss para {symbol}: {novo_stop_loss:.8f}"
-                        )
-
                         # Obtém o stop loss atual do banco de dados
                         stop_loss_atual, _ = self.database_manager.obter_stop_loss(
                             symbol
-                        )
-
-                        logger.info(
-                            f"Stop loss atual para {symbol}: {stop_loss_atual:.8f}"
                         )
 
                         # Atualiza o stop loss apenas se o novo for maior que o atual
