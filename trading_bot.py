@@ -667,23 +667,6 @@ class TradingBot:
             f"{tipo_operacao} de {quantidade_str} {symbol} a {preco} USDT (Total: {valor_total} USDT)"
         )
 
-    def calcular_volatilidade(df, periodos=14):
-        """
-        Calcula a volatilidade com base no desvio padrão dos preços de fechamento.
-        """
-        return np.std(df["close"].tail(periodos))
-
-    def ajustar_intervalo_por_volatilidade(volatilidade):
-        """
-        Ajusta o intervalo de atualização baseado na volatilidade.
-        """
-        if volatilidade < 0.005:  # Baixa volatilidade
-            return 30  # Intervalo de 30 minutos
-        elif volatilidade < 0.01:  # Volatilidade moderada
-            return 15  # Intervalo de 15 minutos
-        else:  # Alta volatilidade
-            return 5  # Intervalo de 5 minutos
-
     def executar_estrategia_compra(self, symbol, df) -> None:
         try:
 
