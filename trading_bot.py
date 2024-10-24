@@ -16,10 +16,11 @@ from indicator_calculator import IndicatorCalculator
 from sentiment_analyzer import SentimentAnalyzer
 from telegram_notifier import TelegramNotifier
 from trade_executor import TradeExecutor
-
+from datetime import datetime, timedelta
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 import numpy as np
+import json
 
 
 logger = logging.getLogger(__name__)
@@ -35,8 +36,10 @@ class TradingBot:
         symbols: Dict[str, str],
         casas_decimais: Dict[str, int],
         min_notional: Dict[str, float],
-        interval_compra: str = Client.KLINE_INTERVAL_15MINUTE,
-        interval_venda: str = Client.KLINE_INTERVAL_15MINUTE,
+        interval_compra: str = Client.KLINE_INTERVAL_1MINUTE,
+        interval_venda: str = Client.KLINE_INTERVAL_1MINUTE,
+        modo="moderado",
+        timestamp_file="timestamps.json",
     ) -> None:
         self.client = Client(api_key=binance_api_key, api_secret=binance_secret_key)
         self.client.time_sync = True
@@ -54,6 +57,111 @@ class TradingBot:
         self.symbols = symbols
         self.casas_decimais = casas_decimais
         self.min_notional = min_notional
+        self.modo = modo
+        self.timestamp_file = timestamp_file
+        self.ultimo_timestamp = self.carregar_timestamps()
+
+    def iniciar_estrategia(self, symbol: str) -> None:
+        """
+        Inicia a estratégia de trading para um símbolo específico.
+        """
+        try:
+            logger.info(f"Iniciando estratégia de trading para {symbol}...")
+
+            df = self.data_handler.obter_dados_mercado(symbol)
+
+            if not df.empty:
+                # Calcula a volatilidade para o ativo
+                volatilidade = self.calcular_volatilidade(df)
+                intervalo_minutos = self.ajustar_tatica_por_modo(volatilidade)
+
+                logging.info(
+                    f"Símbolo: {symbol}, Volatilidade: {volatilidade:.4f}, Intervalo ajustado: {intervalo_minutos} minutos"
+                )
+
+                # Verifica se já passou tempo suficiente desde a última execução
+                if self.passou_tempo_suficiente(symbol, intervalo_minutos):
+
+                    # Atualizar o stop-loss
+                    self.atualiza_stoploss(symbol, df)
+
+                    # Executar a estratégia de venda
+                    self.executar_estrategia_venda(symbol, df)
+
+                    # Executar a estratégia de compra
+                    self.executar_estrategia_compra(symbol, df)
+
+                    # Atualiza o timestamp para o próximo ciclo
+                    self.ultimo_timestamp[symbol] = datetime.now().isoformat()
+
+                    # Salva os timestamps no arquivo
+                    self.salvar_timestamps()
+
+        except Exception as e:
+            logger.error(f"Erro ao iniciar estratégia de trading para {symbol}: {e}")
+            logger.debug(traceback.format_exc())
+
+    def carregar_timestamps(self):
+        """
+        Carrega os timestamps do arquivo JSON.
+        Se o arquivo não existir, retorna um dicionário vazio.
+        """
+        if os.path.exists(self.timestamp_file):
+            with open(self.timestamp_file, "r") as f:
+                return json.load(f)
+        return {}
+
+    def salvar_timestamps(self):
+        """
+        Salva os timestamps atuais no arquivo JSON.
+        """
+        with open(self.timestamp_file, "w") as f:
+            json.dump(self.ultimo_timestamp, f)
+
+    def calcular_volatilidade(self, df, periodos=14):
+        """
+        Calcula a volatilidade com base no desvio padrão dos preços de fechamento.
+        """
+        return np.std(df["close"].tail(periodos))
+
+    def ajustar_intervalo_por_volatilidade(self, volatilidade):
+        """
+        Ajusta o intervalo de execução com base na volatilidade.
+        """
+        if volatilidade < 0.005:
+            return 30  # 30 minutos para baixa volatilidade
+        elif volatilidade < 0.01:
+            return 15  # 15 minutos para volatilidade moderada
+        else:
+            return 5  # 5 minutos para alta volatilidade
+
+    def ajustar_tatica_por_modo(self, volatilidade):
+        """
+        Ajusta a tática do bot com base no modo (conservador, moderado, agressivo)
+        e na volatilidade do mercado.
+        """
+        intervalo_volatilidade = self.ajustar_intervalo_por_volatilidade(volatilidade)
+        if self.modo == "agressivo":
+            return intervalo_volatilidade // 2  # Intervalo mais curto no modo agressivo
+        elif self.modo == "conservador":
+            return (
+                intervalo_volatilidade * 2
+            )  # Intervalo mais longo no modo conservador
+        else:
+            return intervalo_volatilidade  # Modo moderado
+
+    def passou_tempo_suficiente(self, symbol, intervalo_minutos):
+        """
+        Verifica se já passou tempo suficiente para a próxima execução.
+        """
+        ultimo_timestamp = self.ultimo_timestamp.get(symbol)
+        if not ultimo_timestamp:
+            return True  # Primeira execução sempre retorna True
+
+        ultimo_timestamp = datetime.fromisoformat(ultimo_timestamp)
+        tempo_atual = datetime.now()
+        diferenca_tempo = tempo_atual - ultimo_timestamp
+        return diferenca_tempo >= timedelta(minutes=intervalo_minutos)
 
     def calcular_stake(self, symbol: str, risco_percentual: float = 1.0) -> str:
         """
@@ -559,13 +667,27 @@ class TradingBot:
             f"{tipo_operacao} de {quantidade_str} {symbol} a {preco} USDT (Total: {valor_total} USDT)"
         )
 
-    def executar_estrategia_compra(self) -> None:
-        for key, value in self.symbols.items():
-            try:
-                # Obter dados de mercado
-                df = self.data_handler_compra.obter_dados_mercado(key)
-                if df.empty:
-                    continue
+    def calcular_volatilidade(df, periodos=14):
+        """
+        Calcula a volatilidade com base no desvio padrão dos preços de fechamento.
+        """
+        return np.std(df["close"].tail(periodos))
+
+    def ajustar_intervalo_por_volatilidade(volatilidade):
+        """
+        Ajusta o intervalo de atualização baseado na volatilidade.
+        """
+        if volatilidade < 0.005:  # Baixa volatilidade
+            return 30  # Intervalo de 30 minutos
+        elif volatilidade < 0.01:  # Volatilidade moderada
+            return 15  # Intervalo de 15 minutos
+        else:  # Alta volatilidade
+            return 5  # Intervalo de 5 minutos
+
+    def executar_estrategia_compra(self, symbol, df) -> None:
+        try:
+
+            if not df.empty:
 
                 # Calcular indicadores
                 df = self.indicator_calculator.calcular_indicadores(df)
@@ -578,44 +700,40 @@ class TradingBot:
                 acao = self.estrategia_trading(df, sentimento)
 
                 if acao == "Comprar":
-                    stake = self.calcular_stake(key)
+                    stake = self.calcular_stake(symbol)
                     if not stake:
-                        logger.error(f"Stake não foi calculado para {key}.")
-                        continue
+                        logger.error(f"Stake não foi calculado para {symbol}.")
 
                     # Executar compra
-                    preco_compra = self.comprar(key, stake)
+                    preco_compra = self.comprar(symbol, stake)
                     if preco_compra is not None:
-                        logger.info(f"Compra executada para {key}: {preco_compra}")
+                        logger.info(f"Compra executada para {symbol}: {preco_compra}")
 
                     preco_medio, quantidade_total, taxa_total = (
-                        self.database_manager.obter_transacoes_totais(key, "COMPRA")
+                        self.database_manager.obter_transacoes_totais(symbol, "COMPRA")
                     )
 
                     self.database_manager.salvar_stop_loss(
-                        key, preco_medio * 0.97, preco_medio
+                        symbol, preco_medio * 0.97, preco_medio
                     )
 
-            except Exception as e:
-                logger.error(f"Erro inesperado no símbolo {key}: {e}")
-                logger.debug(traceback.format_exc())
+        except Exception as e:
+            logger.error(f"Erro inesperado no símbolo {symbol}: {e}")
+            logger.debug(traceback.format_exc())
 
         self.database_manager.fechar_conexao()
 
-    def executar_estrategia_venda(self) -> None:
-        for key, value in self.symbols.items():
-            try:
-                # Obter dados de mercado
-                df = self.data_handler_venda.obter_dados_mercado(key)
-                if df.empty:
-                    continue
+    def executar_estrategia_venda(self, symbol, df) -> None:
+        try:
+
+            if not df.empty:
 
                 # Calcular indicadores
                 df = self.indicator_calculator.calcular_indicadores(df)
 
                 # Obter o stop-loss atual do banco de dados
                 stop_loss_atual, preco_maximo = self.database_manager.obter_stop_loss(
-                    key
+                    symbol
                 )
 
                 # Atualizar o preço máximo e stop-loss dinâmico
@@ -624,24 +742,25 @@ class TradingBot:
                 # Verificar se stop_loss_atual é None
                 if stop_loss_atual is None:
                     logger.warning(
-                        f"Stop-loss atual é None para {key}. Ignorando venda."
+                        f"Stop-loss atual é None para {symbol}. Ignorando venda."
                     )
                     stop_loss_atual = 0.0
 
                 if preco_atual is None:
-                    logger.warning(f"Preço atual é None para {key}. Ignorando venda.")
-                    continue
+                    logger.warning(
+                        f"Preço atual é None para {symbol}. Ignorando venda."
+                    )
 
                 # Se o preço atual cair abaixo do stop-loss, vender a posição
                 if preco_atual <= stop_loss_atual:
                     logger.info(
-                        f"Executando venda devido ao stop-loss atingido para {key}"
+                        f"Executando venda devido ao stop-loss atingido para {symbol}"
                     )
-                    self.vender(key, value, "Vender", str(preco_atual))
+                    self.vender(symbol, "", "Vender", str(preco_atual))
 
-            except Exception as e:
-                logger.error(f"Erro inesperado no símbolo {key}: {e}")
-                logger.debug(traceback.format_exc())
+        except Exception as e:
+            logger.error(f"Erro inesperado no símbolo {symbol}: {e}")
+            logger.debug(traceback.format_exc())
 
         self.database_manager.fechar_conexao()
 
@@ -727,74 +846,91 @@ class TradingBot:
         logger.info(f"Após a venda, o preço {desempenho} {abs(diferenca):.2f} USDT.")
         return desempenho, diferenca
 
-    def atualiza_stoploss(self):
+    def atualiza_stoploss(self, symbol, df):
         logger.info("Iniciando atualização do stop loss para todas as moedas")
+        try:
 
-        for symbol in self.symbols:
-            try:
-
-                # Obtém os dados de mercado recentes
-                df = self.data_handler_compra.obter_dados_mercado(symbol)
-                if df.empty:
-                    continue
-
-                # Calcula a volatilidade
+            if not df.empty:
+                # Calcula a volatilidade para o símbolo atual
                 volatilidade = self.calcular_volatilidade(df)
-
-                # Ajusta o percentual de stop loss baseado na volatilidade
-                percentual_stop_loss = self.ajustar_percentual_stop_loss(volatilidade)
-
-                # Obtém o preço médio e a quantidade total das compras
-                preco_medio, quantidade_total, _ = (
-                    self.calcular_preco_medio_e_quantidade_banco(symbol)
+                intervalo_minutos = self.ajustar_intervalo_por_volatilidade(
+                    volatilidade
+                )
+                logging.info(
+                    f"Símbolo: {symbol}, Volatilidade: {volatilidade:.4f}, Intervalo ajustado: {intervalo_minutos} minutos"
                 )
 
-                logger.info(
-                    f"Moeda: {symbol} Preço médio: {preco_medio}, Quantidade total: {quantidade_total}"
-                )
+                # Verifica se já passou tempo suficiente desde a última execução
+                if self.passou_tempo_suficiente(symbol, intervalo_minutos):
 
-                logger.info(
-                    f"Percentual de stop loss ajustado para {symbol}: {percentual_stop_loss:.2f}"
-                )
+                    # Obtém os dados de mercado recentes
+                    df = self.data_handler_compra.obter_dados_mercado(symbol)
 
-                if preco_medio > 0 and quantidade_total > 0:
+                    # Calcula a volatilidade
+                    volatilidade = self.calcular_volatilidade(df)
 
-                    # Obtém o preço atual
-                    preco_atual = float(
-                        self.client.get_symbol_ticker(symbol=symbol)["price"]
+                    # Ajusta o percentual de stop loss baseado na volatilidade
+                    percentual_stop_loss = self.ajustar_percentual_stop_loss(
+                        volatilidade
                     )
 
-                    logger.info(f"Preço atual para {symbol}: {preco_atual:.8f}")
+                    # Obtém o preço médio e a quantidade total das compras
+                    preco_medio, quantidade_total, _ = (
+                        self.calcular_preco_medio_e_quantidade_banco(symbol)
+                    )
 
-                    # Calcula o novo stop loss (percentual abaixo do preço médio)
-                    novo_stop_loss = preco_atual * (1 - percentual_stop_loss)
+                    logger.info(
+                        f"Moeda: {symbol} Preço médio: {preco_medio}, Quantidade total: {quantidade_total}"
+                    )
 
-                    logger.info(f"Novo stop loss para {symbol}: {novo_stop_loss:.8f}")
+                    logger.info(
+                        f"Percentual de stop loss ajustado para {symbol}: {percentual_stop_loss:.2f}"
+                    )
 
-                    # Obtém o stop loss atual do banco de dados
-                    stop_loss_atual, _ = self.database_manager.obter_stop_loss(symbol)
+                    if preco_medio > 0 and quantidade_total > 0:
 
-                    logger.info(f"Stop loss atual para {symbol}: {stop_loss_atual:.8f}")
-
-                    # Atualiza o stop loss apenas se o novo for maior que o atual
-                    if novo_stop_loss > stop_loss_atual:
-                        self.database_manager.salvar_stop_loss(
-                            symbol, novo_stop_loss, preco_atual
+                        # Obtém o preço atual
+                        preco_atual = float(
+                            self.client.get_symbol_ticker(symbol=symbol)["price"]
                         )
+
+                        logger.info(f"Preço atual para {symbol}: {preco_atual:.8f}")
+
+                        # Calcula o novo stop loss (percentual abaixo do preço médio)
+                        novo_stop_loss = preco_atual * (1 - percentual_stop_loss)
+
+                        logger.info(
+                            f"Novo stop loss para {symbol}: {novo_stop_loss:.8f}"
+                        )
+
+                        # Obtém o stop loss atual do banco de dados
+                        stop_loss_atual, _ = self.database_manager.obter_stop_loss(
+                            symbol
+                        )
+
+                        logger.info(
+                            f"Stop loss atual para {symbol}: {stop_loss_atual:.8f}"
+                        )
+
+                        # Atualiza o stop loss apenas se o novo for maior que o atual
+                        if novo_stop_loss > stop_loss_atual:
+                            self.database_manager.salvar_stop_loss(
+                                symbol, novo_stop_loss, preco_atual
+                            )
+                            logger.info(
+                                f"Stop loss atualizado para {symbol}: {novo_stop_loss:.8f}"
+                            )
+
                         logger.info(
                             f"Stop loss atualizado para {symbol}: {novo_stop_loss:.8f}"
                         )
+                    else:
+                        logger.info(
+                            f"Não há compras registradas para {symbol}. Stop loss não atualizado."
+                        )
 
-                    logger.info(
-                        f"Stop loss atualizado para {symbol}: {novo_stop_loss:.8f}"
-                    )
-                else:
-                    logger.info(
-                        f"Não há compras registradas para {symbol}. Stop loss não atualizado."
-                    )
-
-            except Exception as e:
-                logger.error(f"Erro ao atualizar stop loss para {symbol}: {str(e)}")
+        except Exception as e:
+            logger.error(f"Erro ao atualizar stop loss para {symbol}: {str(e)}")
 
         logger.info("Atualização do stop loss concluída")
 
