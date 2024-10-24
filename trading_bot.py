@@ -68,7 +68,7 @@ class TradingBot:
         try:
             logger.info(f"Iniciando estratégia de trading para {symbol}...")
 
-            df = self.data_handler.obter_dados_mercado(symbol)
+            df = self.data_handler_compra.obter_dados_mercado(symbol)
 
             if not df.empty:
                 # Calcula a volatilidade para o ativo
