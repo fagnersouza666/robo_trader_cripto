@@ -1,5 +1,6 @@
 import logging
 import sqlite3
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,12 @@ class DatabaseManager:
         taxa: float,
         vendido,
     ):
+
+        quantidade = Decimal(str(quantidade))
+        preco = Decimal(str(preco))
+        valor_total = Decimal(str(valor_total))
+        taxa = Decimal(str(taxa))
+
         with self.conn:
             self.cursor.execute(
                 """
@@ -113,6 +120,14 @@ class DatabaseManager:
         porcentagem,
         taxa_venda,
     ):
+
+        valor_compras = Decimal(str(valor_compras))
+        valor_vendas = Decimal(str(valor_vendas))
+        taxa_compra = Decimal(str(taxa_compra))
+        ganhos = Decimal(str(ganhos))
+        porcentagem = Decimal(str(porcentagem))
+        taxa_venda = Decimal(str(taxa_venda))
+
         """
         Registra os ganhos após uma venda.
         """
@@ -138,6 +153,11 @@ class DatabaseManager:
     def atualizar_resumo_financeiro(
         self, valor_inicial, valor_atual, porcentagem_geral
     ):
+
+        valor_atual = Decimal(str(valor_atual))
+        valor_inicial = Decimal(str(valor_inicial))
+        porcentagem_geral = Decimal(str(porcentagem_geral))
+
         """
         Atualiza a tabela com o resumo financeiro geral.
         """
@@ -222,6 +242,10 @@ class DatabaseManager:
             )
 
     def salvar_stop_loss(self, simbolo: str, stop_loss: float, preco_maximo: float):
+
+        stop_loss = Decimal(str(stop_loss))
+        preco_maximo = Decimal(str(preco_maximo))
+
         with self.conn:
             self.cursor.execute(
                 """
