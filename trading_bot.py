@@ -913,8 +913,8 @@ class TradingBot:
         Quanto maior a volatilidade, mais amplo será o stop loss.
         """
         if volatilidade < 0.005:  # baixa volatilidade
-            return 0.02  # 2%
+            return 0.05  # 2%
         elif volatilidade < 0.01:  # volatilidade moderada
-            return 0.03  # 3%
+            return 0.07  # 3%
         else:  # alta volatilidade
-            return 0.05  # 5%
+            return 0.1  # 5%
