@@ -94,10 +94,10 @@ class DatabaseManager:
                     data_hora,
                     simbolo,
                     tipo,
-                    quantidade,
-                    preco,
-                    valor_total,
-                    taxa,
+                    float(quantidade),
+                    float(preco),
+                    float(valor_total),
+                    float(taxa),
                     vendido,
                 ),
             )
@@ -140,12 +140,12 @@ class DatabaseManager:
             (
                 data_hora,
                 simbolo,
-                valor_compras,
-                valor_vendas,
-                taxa_compra,
-                ganhos,
-                porcentagem,
-                taxa_venda,
+                float(valor_compras),
+                float(valor_vendas),
+                float(taxa_compra),
+                float(ganhos),
+                float(porcentagem),
+                float(taxa_venda),
             ),
         )
         self.conn.commit()
@@ -166,7 +166,9 @@ class DatabaseManager:
         SET valor_atual = ?, porcentagem_geral = ?
         WHERE valor_inicial = ?
         """
-        self.cursor.execute(query, (valor_atual, porcentagem_geral, valor_inicial))
+        self.cursor.execute(
+            query, (float(valor_atual), float(porcentagem_geral), float(valor_inicial))
+        )
         self.conn.commit()
 
     def atualizar_compras(self, moeda):
@@ -252,7 +254,7 @@ class DatabaseManager:
                 INSERT OR REPLACE INTO stop_loss (simbolo, stop_loss, preco_maximo)
                 VALUES (?, ?, ?)
                 """,
-                (simbolo, stop_loss, preco_maximo),
+                (simbolo, float(stop_loss), float(preco_maximo)),
             )
 
     def deleta_stop_loss(self, simbolo: str):
